@@ -17,9 +17,12 @@ git checkout -b feature-login
 
 3. Do your work and save it locallyWrite your code, save your files, and then log your progress:
 bash
+git status
+
 git add .
 
 git commit -m "Added login form UI"
+git push
 
 4. Push your branch to GitHubUpload your specific branch to GitHub so your teammates can see it:bashgit push -u origin feature-login
 
