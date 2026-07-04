@@ -41,3 +41,45 @@ Step 5: Merge the Code Using Pull RequestsOnce your feature is on GitHub, do not
 
 
 
+
+
+# my work flow documnetions
+ 
+✅ Module 1: Face Detection (YOLOv8 Face)
+Load model
+Detect faces
+Draw bounding boxes
+Crop faces
+Save cropped faces
+Module 2: Face Embedding (SFace)
+Load SFace model
+Generate 128/512-dimensional embeddings
+Normalize embeddings
+Module 3: MongoDB
+Connect to MongoDB
+Store student information
+Store face embeddings
+Module 4: Registration
+Register a new student
+Detect face
+Generate embedding
+Save to MongoDB
+Module 5: Recognition
+Detect face
+Generate embedding
+Compare with database
+Identify the student
+Module 6: Attendance
+Mark attendance
+Prevent duplicate attendance
+Store date and time
+Module 7: FastAPI
+Build REST APIs
+Connect backend with frontend
+Module 8: Frontend
+Registration page
+Recognition page
+Attendance dashboard
+
+
+

@@ -38,23 +38,23 @@ def detect(self, image_path):
 
 def crop_faces(self, image, faces, output_folder):
 
-    os.makedirs(output_folder, exist_ok=True)
+    os.makedirs(output_folder, exist_ok=True) #create a folder if not exist
 
-    cropped_faces = []
+    cropped_faces = []    #to store the allpaths of saved face images
 
     for index, face in enumerate(faces):
 
-        x1, y1, x2, y2 = face["bbox"]
+        x1, y1, x2, y2 = face["bbox"] #reading the boundary box 
 
-        cropped_face = image[y1:y2, x1:x2]
+        cropped_face = image[y1:y2, x1:x2] #croping the face with given boundary
 
         filename = os.path.join(
             output_folder,
-            f"face_{index+1}.jpg"
+            f"face_{index+1}.jpg"  #to create file with jpg extension
         )
 
-        cv2.imwrite(filename, cropped_face)
+        cv2.imwrite(filename, cropped_face) #to store th files in output folder
 
-        cropped_faces.append(filename)
+        cropped_faces.append(filename)#storing the path
 
     return cropped_faces
