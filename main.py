@@ -1,4 +1,4 @@
-from src.detect import FaceDetector
+from detector.detect import FaceDetector
 import os
 
 print(os.getcwd())

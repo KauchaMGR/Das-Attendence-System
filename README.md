@@ -83,3 +83,9 @@ Attendance dashboard
 
 
 
+
+# Module 1:
+Module 1 – Face Detection: The face detection module is responsible for locating human faces within an input image. A pre-trained YOLOv8 Face model is loaded using the Ultralytics framework, and each input image is processed to identify the coordinates of all visible faces. For every detected face, the model returns a bounding box and an associated confidence score. These detection results are then forwarded to the next stage of the system, where the face regions will be cropped and prepared for feature extraction using the SFace recognition model. Separating face detection from recognition improves modularity, making the system easier to maintain, test, and extend.
+
+
+
