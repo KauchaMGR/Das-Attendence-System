@@ -82,6 +82,14 @@ CNN Feature Extraction
       ▼
 512-D Embedding
 
+## There are several face recognition models available (FaceNet, ArcFace, InsightFace, DeepFace, etc.), but we'll use SFace because:
+
+It integrates directly with OpenCV.
+It is lightweight and fast.
+It produces robust face embeddings.
+It is suitable for real-time applications such as attendance systems.
+It avoids additional dependencies beyond OpenCV.
+
 # my work flow documnetions
  
 ## Module 1: Face Detection (YOLOv8 Face)
@@ -130,6 +138,10 @@ Attendance dashboard
 
 Description:
 This module contains helper functions responsible for processing the output of the face detection stage. It creates required directories, crops detected faces from the original image, draws bounding boxes and confidence scores on the original image, and saves the processed images to the appropriate output folders. Separating these image-processing operations into a dedicated utility module improves code organization, promotes reusability, and follows the Single Responsibility Principle (SRP) by keeping face detection and image manipulation as independent components.
+
+## Downloading the SFace Model
+
+The pre-trained SFace model was downloaded from the official OpenCV model repository in ONNX format. The model is stored in the Models directory and will be used to generate 512-dimensional facial embeddings for face recognition. The ONNX format provides a portable representation of the trained neural network, enabling efficient inference using OpenCV.
 
 
 
