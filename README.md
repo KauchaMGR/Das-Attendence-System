@@ -35,8 +35,37 @@ Step 5: Merge the Code Using Pull RequestsOnce your feature is on GitHub, do not
 
 
 ## Project Structure
-<img width="461" height="761" alt="image" src="https://github.com/user-attachments/assets/e252c0d4-21ec-4748-a8cd-826d1cab2449" />
+Das-Attendence-System/
 
+│
+├── Models/
+│      yolov8n-face.pt
+│
+├── Datasets/
+│      Register/
+│      Test/
+│
+├── Outputs/
+│      Detected_faces/
+│      Annotated/
+│
+├── src/
+│
+│   ├── detector/
+│   │      detector.py
+│   │
+│   ├── embedding/
+│   │      sface.py
+│   │
+│   ├── database/
+│   │      mongodb.py
+│   │
+│   ├── utils/
+│   │      image_utils.py
+│   │
+│   └── config.py
+│
+└── main.py
 
 
 
