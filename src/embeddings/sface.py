@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 
 
 class SFaceEmbedder:
@@ -16,7 +17,7 @@ class SFaceEmbedder:
 
         print("SFace model loaded successfully.")
 
-def generate_embedding(self, face_image):
+    def generate_embedding(self, face_image):
         """
         Generate a 512-dimensional embedding
         from a cropped face image.

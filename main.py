@@ -1,5 +1,8 @@
 from src.detector.detect import FaceDetector
 import os
+import cv2
+from src.embeddings.sface import SFaceEmbedder
+from src.utils.embedding_utils import save_embedding
 
 from src.utils.image_utils import (
     crop_faces,
@@ -76,3 +79,43 @@ for face in cropped_faces:
     print(face)
 
 print("\nAnnotated image saved successfully.")
+
+
+
+
+
+
+# ----------------------------
+# Load SFace Model
+# ----------------------------
+SFACE_MODEL = os.path.join(
+    "Models",
+    "face_recognition_sface_2021dec.onnx"
+)
+
+embedder = SFaceEmbedder(SFACE_MODEL)
+
+# ----------------------------
+# Generate Embeddings
+# ----------------------------
+
+print("\nGenerating Face Embeddings...\n")
+
+for index, face_path in enumerate(cropped_faces, start=1):
+
+    face = cv2.imread(face_path)
+
+    embedding = embedder.generate_embedding(face)
+
+    save_embedding(
+        embedding,
+        os.path.join(
+            "Outputs",
+            "Embeddings",
+            f"face_{index}.npy"
+        )
+    )
+
+    print(f"Face {index}")
+    print(f"Embedding Length : {len(embedding)}")
+    print("-" * 40)
