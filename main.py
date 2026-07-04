@@ -1,7 +1,22 @@
-import cv2
-import ultralytics
-import numpy as np
+from src.detect import FaceDetector
+import os
 
-print("OpenCV:", cv2.__version__)
-print("Ultralytics Installed")
-print("NumPy:", np.__version__)
+print(os.getcwd())
+
+MODEL_PATH = os.path.join("Models", "yolov8n-face.pt")
+
+detector = FaceDetector(MODEL_PATH)
+
+image, faces = detector.detect("Dataset/Register/john.jpg")
+
+print(f"Detected {len(faces)} face(s)")
+
+cropped = detector.crop_faces(
+    image,
+    faces,
+    "Outputs/Detected_faces"
+)
+
+print("Saved faces:")
+for face in cropped:
+    print(face)
