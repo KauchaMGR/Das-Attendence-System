@@ -144,4 +144,8 @@ This module contains helper functions responsible for processing the output of t
 The pre-trained SFace model was downloaded from the official OpenCV model repository in ONNX format. The model is stored in the Models directory and will be used to generate 512-dimensional facial embeddings for face recognition. The ONNX format provides a portable representation of the trained neural network, enabling efficient inference using OpenCV.
 
 
+# Module 3:
+MongoDB Community Server was installed on the Windows operating system using the official MSI installer. During installation, MongoDB was configured to run as a Windows service, allowing it to start automatically with the operating system. MongoDB Compass was also installed to provide a graphical interface for viewing and managing the database. The Python package pymongo was installed to enable communication between the Python application and the MongoDB server.
+
+
 

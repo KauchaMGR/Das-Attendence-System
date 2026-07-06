@@ -1,6 +1,8 @@
 from src.detector.detect import FaceDetector
 import os
 import cv2
+
+
 from src.embeddings.sface import SFaceEmbedder
 from src.utils.embedding_utils import save_embedding
 
