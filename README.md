@@ -147,5 +147,6 @@ The pre-trained SFace model was downloaded from the official OpenCV model reposi
 # Module 3:
 MongoDB Community Server was installed on the Windows operating system using the official MSI installer. During installation, MongoDB was configured to run as a Windows service, allowing it to start automatically with the operating system. MongoDB Compass was also installed to provide a graphical interface for viewing and managing the database. The Python package pymongo was installed to enable communication between the Python application and the MongoDB server.
 
-
+# module 4:
+After connecting to the local MongoDB server (mongodb://localhost:27017), the smart_attendance database was opened in MongoDB Compass. The students collection was inspected to verify that the student information, including the face embedding (stored as an array) and registration timestamp, had been successfully inserted.
 
