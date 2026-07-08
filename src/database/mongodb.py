@@ -18,6 +18,9 @@ class MongoDB:
         self.attendance = self.database["attendance"]
 
         print("MongoDB connected successfully.")
+        
+    def get_all_students(self):
+     return list(self.students.find())    
 
     def register_student(
         self, student_id, name, department, semester, email, embedding

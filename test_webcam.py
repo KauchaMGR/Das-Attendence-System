@@ -4,6 +4,7 @@ from src.camera.webcam import Webcam
 from src.detector.detect import FaceDetector
 from src.embeddings.sface import SFaceEmbedder
 from src.quality.face_quality import FaceQuality
+from src.services.registration_service import RegistrationService
 
 # ----------------------------------------------------
 # Model Paths
@@ -15,12 +16,10 @@ SFACE_MODEL = "Models/face_recognition_sface_2021dec.onnx"
 # Initialize Objects
 # ----------------------------------------------------
 camera = Webcam()
-
 detector = FaceDetector(YOLO_MODEL)
-
 embedder = SFaceEmbedder(SFACE_MODEL)
-
 quality = FaceQuality()
+registration = RegistrationService()
 
 print("=" * 50)
 print("Smart Attendance System")
@@ -34,34 +33,31 @@ print("Press Q to quit\n")
 # ----------------------------------------------------
 while True:
 
-    # Capture one frame
+    # Capture Frame
     frame = camera.get_frame()
 
-    # Detect faces
+    # Detect Faces
     image, detections = detector.detect_faces(frame)
 
     total_faces = len(detections)
 
-    # ---------------------------------------------
-    # Process every detected face
-    # ---------------------------------------------
+    # ------------------------------------------------
+    # Draw Detection Results
+    # ------------------------------------------------
     for detection in detections:
 
         x1, y1, x2, y2 = detection["bbox"]
-
         confidence = detection["confidence"]
 
-        # Evaluate quality
         score, ready, message = quality.evaluate(
             detection,
             total_faces,
             image.shape
         )
 
-        # Green if ready, Red otherwise
         color = (0, 255, 0) if ready else (0, 0, 255)
 
-        # Draw Bounding Box
+        # Bounding Box
         cv2.rectangle(
             image,
             (x1, y1),
@@ -92,7 +88,7 @@ while True:
             2
         )
 
-        # Status Message
+        # Status
         cv2.putText(
             image,
             message,
@@ -110,15 +106,16 @@ while True:
 
     key = cv2.waitKey(1) & 0xFF
 
-    # Quit
+    # Quit Program
     if key == ord("q"):
         break
 
     # ------------------------------------------------
-    # Capture Face
+    # Capture Registration
     # ------------------------------------------------
     if key == ord(" "):
 
+        # Exactly one face must be detected
         if total_faces != 1:
             print("Exactly one face must be detected.")
             continue
@@ -135,34 +132,55 @@ while True:
             print(f"Cannot Capture : {message}")
             continue
 
+        # Bounding Box
         x1, y1, x2, y2 = detection["bbox"]
 
-        # Crop face (RAM only)
+        # Crop Face (RAM only)
         face = image[y1:y2, x1:x2]
 
         # Generate Embedding
         embedding = embedder.generate_embedding(face)
 
+        print("\nFace Captured Successfully.")
+
+        # --------------------------------------------
+        # Student Details
+        # --------------------------------------------
+        student_id = input("Student ID : ")
+        name = input("Student Name : ")
+        department = input("Department : ")
+        semester = int(input("Semester : "))
+        email = input("Email : ")
+
+        # --------------------------------------------
+        # Store in MongoDB
+        # --------------------------------------------
+        registration.register(
+            student_id=student_id,
+            name=name,
+            department=department,
+            semester=semester,
+            email=email,
+            embedding=embedding
+        )
+
         print("\n" + "=" * 50)
-        print("Face Captured Successfully")
+        print("Student Registered Successfully")
         print("=" * 50)
-
-        print(f"Quality Score : {score}%")
-
-        print(f"Embedding Shape : {embedding.shape}")
-
+        print(f"Student ID : {student_id}")
+        print(f"Name       : {name}")
+        print(f"Department : {department}")
+        print(f"Semester   : {semester}")
+        print(f"Email      : {email}")
         print(f"Embedding Length : {len(embedding)}")
-
-        print("\nRegistration image discarded.")
-        print("Only embedding remains in memory.")
-
+        print("\nFace image was NOT stored.")
+        print("Only embedding was stored in MongoDB.")
         print("=" * 50)
-
-        # Next Module:
-        # Store embedding into MongoDB
 
         break
 
+# ----------------------------------------------------
+# Cleanup
+# ----------------------------------------------------
 camera.release()
-
 cv2.destroyAllWindows()

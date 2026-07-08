@@ -80,7 +80,43 @@ Resize (112 × 112)
 CNN Feature Extraction
       │
       ▼
-512-D Embedding
+128-D Embedding
+
+
+# Registration work flow 
+Student Stands in Front of Webcam
+              │
+              ▼
+      YOLOv8 Face Detection
+              │
+              ▼
+     Face Quality Assessment
+              │
+              ▼
+   "READY TO CAPTURE"
+              │
+      Press SPACE
+              │
+              ▼
+ Capture Current Frame Only
+              │
+              ▼
+ Crop Face in RAM
+              │
+              ▼
+Generate 128-D SFace Embedding
+              │
+              ▼
+Discard Face Image
+              │
+              ▼
+Enter Student Details
+              │
+              ▼
+Store Details + Embedding
+              │
+              ▼
+MongoDB
 
 ## There are several face recognition models available (FaceNet, ArcFace, InsightFace, DeepFace, etc.), but we'll use SFace because:
 
