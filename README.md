@@ -150,3 +150,20 @@ MongoDB Community Server was installed on the Windows operating system using the
 # module 4:
 After connecting to the local MongoDB server (mongodb://localhost:27017), the smart_attendance database was opened in MongoDB Compass. The students collection was inspected to verify that the student information, including the face embedding (stored as an array) and registration timestamp, had been successfully inserted.
 
+#Privacy-Preserving Face Registration
+
+Objective
+
+The objective of this module is to register a student's facial identity without storing any facial image. The system captures a live frame from the webcam, evaluates the quality of the detected face, extracts a facial embedding using the SFace model, and immediately discards the image. Only the numerical embedding and student information are retained for future recognition.
+
+Workflow
+Capture live video from the webcam.
+Detect face using the YOLOv8 Face model.
+Evaluate face quality.
+Wait for the user to press SPACE.
+Capture the current frame.
+Crop the detected face in memory.
+Generate a 128-dimensional embedding using the SFace model.
+Discard the captured image.
+Store only the embedding and student information.
+
