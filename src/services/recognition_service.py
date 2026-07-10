@@ -31,36 +31,61 @@ class RecognitionService:
         )
 
         return numerator / denominator
-
+    
     def recognize(self, live_embedding, threshold=0.70):
         """
-        Recognize the most similar student.
+        Recognize the most similar student using
+        multiple stored embeddings.
         """
 
         students = self.database.get_all_students()
 
+        if not students:
+
+           return None
+
         best_student = None
+        highest_similarity = -1
 
-        best_similarity = -1
-
+        # --------------------------------------------------
+        # Compare against every student
+        # --------------------------------------------------
         for student in students:
 
-            similarity = self.cosine_similarity(
-                live_embedding,
-                student["embedding"]
-            )
+            best_similarity_for_student = -1
 
-            if similarity > best_similarity:
+            print("\n" + "=" * 50)
+            print(f"Student : {student['name']}")
 
-                best_similarity = similarity
+            # Compare with every stored embedding
+            for index, stored_embedding in enumerate(student["embeddings"], start=1):
 
+                similarity = self.cosine_similarity(
+                    live_embedding,
+                    stored_embedding
+                )
+
+                print(f"Pose {index} Similarity : {similarity:.4f}")
+
+                if similarity > best_similarity_for_student:
+                    best_similarity_for_student = similarity
+
+            print(f"Best Similarity : {best_similarity_for_student:.4f}")
+
+            # Keep the best matching student
+            if best_similarity_for_student > highest_similarity:
+                highest_similarity = best_similarity_for_student
                 best_student = student
 
-        if best_similarity >= threshold:
+        print("\n" + "=" * 50)
+        print(f"Highest Similarity Overall : {highest_similarity:.4f}")
+
+        # Final decision
+        if highest_similarity >= threshold:
 
             return {
                 "student": best_student,
-                "similarity": best_similarity
+                "similarity": highest_similarity
             }
 
         return None

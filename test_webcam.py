@@ -21,6 +21,21 @@ embedder = SFaceEmbedder(SFACE_MODEL)
 quality = FaceQuality()
 registration = RegistrationService()
 
+
+# ----------------------------------------------------
+# Registration Pose Sequence
+# ----------------------------------------------------
+POSES = [
+    "LOOK STRAIGHT",
+    "TURN LEFT",
+    "TURN RIGHT",
+    "SMILE",
+    "LOOK SLIGHTLY UP"
+]
+
+current_pose = 0
+embeddings = []
+
 print("=" * 50)
 print("Smart Attendance System")
 print("Registration Mode")
@@ -38,14 +53,12 @@ while True:
 
     # Detect Faces
     image, detections = detector.detect_faces(frame)
-
     total_faces = len(detections)
 
     # ------------------------------------------------
     # Draw Detection Results
     # ------------------------------------------------
     for detection in detections:
-
         x1, y1, x2, y2 = detection["bbox"]
         confidence = detection["confidence"]
 
@@ -99,11 +112,31 @@ while True:
             2
         )
 
+    # Fixed Indentation for Pose UI Overlays
+    cv2.putText(
+        image,
+        f"Pose {current_pose + 1}/5",
+        (20, 35),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.8,
+        (0, 255, 255),
+        2
+    )
+
+    cv2.putText(
+        image,
+        POSES[current_pose],
+        (20, 70),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.8,
+        (0, 255, 255),
+        2
+    ) 
+
     # ------------------------------------------------
     # Display Webcam
     # ------------------------------------------------
     cv2.imshow("Student Registration", image)
-
     key = cv2.waitKey(1) & 0xFF
 
     # Quit Program
@@ -140,6 +173,17 @@ while True:
 
         # Generate Embedding
         embedding = embedder.generate_embedding(face)
+        embeddings.append(embedding.tolist())
+
+        # Log completion BEFORE incrementing to prevent index out of bounds error
+        print(f"\nEmbedding {current_pose + 1} Captured Successfully")
+        
+        current_pose += 1
+
+        if current_pose < len(POSES):
+            print("\nNext pose:")
+            print(POSES[current_pose])
+            continue
 
         print("\nFace Captured Successfully.")
 
@@ -161,7 +205,7 @@ while True:
             department=department,
             semester=semester,
             email=email,
-            embedding=embedding
+            embeddings=embeddings
         )
 
         print("\n" + "=" * 50)

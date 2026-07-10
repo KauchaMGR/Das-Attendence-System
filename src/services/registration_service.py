@@ -14,7 +14,7 @@ class RegistrationService:
         department,
         semester,
         email,
-        embedding
+        embeddings
     ):
 
         return self.database.register_student(
@@ -23,5 +23,5 @@ class RegistrationService:
             department,
             semester,
             email,
-            embedding
+            embeddings
         )

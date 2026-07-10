@@ -23,7 +23,13 @@ class MongoDB:
      return list(self.students.find())    
 
     def register_student(
-        self, student_id, name, department, semester, email, embedding
+        self, 
+        student_id,
+        name,
+        department,
+        semester,
+        email,
+        embeddings
     ):
 
         # Prevent duplicate student IDs
@@ -39,7 +45,7 @@ class MongoDB:
             "department": department,
             "semester": semester,
             "email": email,
-            "embedding": embedding.tolist(),
+            "embeddings": embeddings,
             "registered_at": datetime.now(),
         }
 

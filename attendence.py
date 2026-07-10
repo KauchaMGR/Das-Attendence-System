@@ -54,9 +54,8 @@ while True:
 
         confidence = detection["confidence"]
 
-        score, ready, message = quality.evaluate(
+        score, ready, message = quality.evaluate_attendance(
             detection,
-            total_faces,
             image.shape
         )
 
@@ -121,57 +120,84 @@ while True:
     if key == ord(" "):
 
         # Exactly one face
-        if total_faces != 1:
-            print("\nExactly one face must be detected.")
+        if total_faces == 0:
+            print("\n No face detected.")
             continue
 
-        detection = detections[0]
+        print(f"\nDetected {total_faces} face(s).\n") 
 
-        score, ready, message = quality.evaluate(
-            detection,
-            total_faces,
-            image.shape
-        )
+        for index, detection in enumerate(detections, start=1):
 
-        if not ready:
-            print(f"\nCannot Capture : {message}")
-            continue
+            score, ready, message = quality.evaluate_attendance(
+                detection,
+                image.shape
+            )
 
-        # Crop Face
-        x1, y1, x2, y2 = detection["bbox"]
+            if not ready:
+                print(f"\nCannot Capture : {message}")
+                continue
 
-        face = image[y1:y2, x1:x2]
+            # Crop Face
+            x1, y1, x2, y2 = detection["bbox"]
 
-        # Generate Embedding
-        embedding = embedder.generate_embedding(face)
+            face = image[y1:y2, x1:x2]
+            print("-" * 50)
+            print(f"Processing Face {index}")
 
-        print("\nGenerating Embedding...")
+            # Generate Embedding
+            embedding = embedder.generate_embedding(face)
 
-        # Recognize Student
-        result = recognizer.recognize(embedding)
+            print("\nGenerating Embedding...")
 
-        print("=" * 50)
+            # Recognize Student
+            result = recognizer.recognize(embedding)
 
-        if result is None:
+            print("=" * 50)
 
-            print("Unknown Person")
+            if result is None:
+                cv2.putText(
+                    image,
+                    "Unknown",
+                    (x1, y1 - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (0, 0, 255),
+                    2
+                )
 
-        else:
+    
+                print("Unknown Person")
+                
+            else:
+                student = result["student"]
+                similarity = result["similarity"]
 
-            student = result["student"]
+                cv2.putText(
+                    image,
+                    f"{student['name']} ({similarity:.2f})",
+                    (x1, y1 - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (0, 255, 0),
+                    2
+                )
 
-            similarity = result["similarity"]
+                print("Student Recognized Successfully\n")
+                print(f"Student ID : {student['student_id']}")
+                print(f"Name       : {student['name']}")
+                print(f"Department : {student['department']}")
+                print(f"Semester   : {student['semester']}")
+                print(f"Email      : {student['email']}")
+                print(f"Similarity : {similarity:.4f}")
 
-            print("Student Recognized Successfully\n")
+            print("=" * 50)
 
-            print(f"Student ID : {student['student_id']}")
-            print(f"Name       : {student['name']}")
-            print(f"Department : {student['department']}")
-            print(f"Semester   : {student['semester']}")
-            print(f"Email      : {student['email']}")
-            print(f"Similarity : {similarity:.4f}")
+         
+        # Show recognition results on webcam
+        cv2.imshow("Smart Attendance", image)
 
-        print("=" * 50)
+        # Keep the result visible for 2 seconds
+        cv2.waitKey(2000)   
 
 # ----------------------------------------------------
 # Cleanup
