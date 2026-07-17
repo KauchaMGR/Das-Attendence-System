@@ -193,6 +193,7 @@ while True:
             print("=" * 50)
 
          
+         
         # Show recognition results on webcam
         cv2.imshow("Smart Attendance", image)
 
