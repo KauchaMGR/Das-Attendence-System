@@ -1,3 +1,7 @@
+/*
+  Topbar.jsx renders the page header at the top of dashboard pages.
+  It shows a title, an optional subtitle, and an optional right-side action/status element.
+*/
 export default function Topbar({ title, sub, right }) {
   return (
     <div className="flex justify-between items-start flex-wrap gap-3 mb-6 pb-5 border-b border-rule">
@@ -9,6 +13,7 @@ export default function Topbar({ title, sub, right }) {
           </div>
         )}
       </div>
+      {/* Optional right-side content, such as a status badge */}
       {right}
     </div>
   );

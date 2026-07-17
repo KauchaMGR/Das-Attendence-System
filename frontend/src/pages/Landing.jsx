@@ -1,6 +1,14 @@
+/*
+  Landing.jsx is the public homepage for the project.
+  It shows the system concept, technology stack, workflow, and team members.
+*/
 import { Link } from "react-router-dom";
 import StatusStamp from "../components/StatusStamp.jsx";
 
+/*
+  STAGES describes the four main steps of the attendance pipeline.
+  Each object maps to one card in the pipeline section.
+*/
 const STAGES = [
   {
     n: "01",
@@ -24,14 +32,42 @@ const STAGES = [
   },
 ];
 
+/*
+  STACK lists the technologies used in the project.
+  This is rendered in the built-with strip.
+*/
 const STACK = [
-  "FastAPI", "YOLOv8n-face", "DeepFace · SFace", "MongoDB", "JWT + bcrypt", "React + Tailwind",
+  "FastAPI",
+  "YOLOv8n-face",
+  "DeepFace · SFace",
+  "MongoDB",
+  "JWT + bcrypt",
+  "React + Tailwind",
 ];
 
+/*
+  TEAM contains the student contributors and their roles.
+  Each entry becomes one card in the submitted-by section.
+*/
 const TEAM = [
-  { i: "AS", n: "Aayushman Shrestha", r: "231501", role: "API routes, JWT auth, MongoDB queries" },
-  { i: "DK", n: "Dipeen Kaucha Magar", r: "231513", role: "YOLO detection, DeepFace recognition, enrollment pipeline" },
-  { i: "SP", n: "Sittal Pantha", r: "231534", role: "React dashboard, routing, documentation" },
+  {
+    i: "AS",
+    n: "Aayushman Shrestha",
+    r: "231501",
+    role: "API routes, JWT auth, MongoDB queries",
+  },
+  {
+    i: "DK",
+    n: "Dipeen Kaucha Magar",
+    r: "231513",
+    role: "YOLO detection, DeepFace recognition, enrollment pipeline",
+  },
+  {
+    i: "SP",
+    n: "Sittal Pantha",
+    r: "231534",
+    role: "React dashboard, routing, documentation",
+  },
 ];
 
 export default function Landing() {
@@ -43,11 +79,15 @@ export default function Landing() {
           <div className="w-2.5 h-2.5 bg-stamp-green rounded-[2px]" />
           <span className="font-display font-semibold text-[16px]">AttendSys</span>
         </div>
+
+        {/* Navigation links to page sections */}
         <nav className="hidden md:flex gap-8 font-mono text-[12.5px] text-muted uppercase tracking-wide">
           <a href="#pipeline" className="hover:text-ink">Pipeline</a>
           <a href="#stack" className="hover:text-ink">Stack</a>
           <a href="#team" className="hover:text-ink">Team</a>
         </nav>
+
+        {/* Link to the interactive dashboard login */}
         <Link
           to="/login"
           className="font-mono text-[12.5px] border border-ink/20 rounded-[3px] px-4 py-2 hover:border-ink hover:bg-ink hover:text-paper transition-colors focus-ring"
@@ -66,10 +106,10 @@ export default function Landing() {
             The class register, marked by the room itself.
           </h1>
           <p className="text-[16px] leading-relaxed text-ink2/80 max-w-[46ch] mt-6">
-            One photograph at the start of class. YOLOv8n-face finds every
-            student in frame, DeepFace confirms who they are, and attendance
-            lands in the register before roll call would have even started.
+            One photograph at the start of class. YOLOv8n-face finds every student in frame, DeepFace confirms who they are, and attendance lands in the register before roll call would have even started.
           </p>
+
+          {/* Primary call-to-action buttons */}
           <div className="flex gap-3 mt-8 flex-wrap">
             <Link
               to="/login"
@@ -86,7 +126,10 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* Signature element: a torn "register page" with a rubber-stamped entry */}
+        {/*
+          Visual “mockup” section showing a stylized attendance sheet.
+          This is just static UX content, not a real app screen.
+        */}
         <div className="bg-[#FBF9F3] border border-rule rounded-sm p-6 shadow-[0_1px_0_#D9D0B9,0_18px_40px_-24px_rgba(30,38,32,0.35)] relative">
           <div className="flex justify-between items-baseline mb-4 font-mono text-[11px] text-muted uppercase tracking-wide">
             <span>Computer Networks · Room 204</span>
@@ -119,10 +162,11 @@ export default function Landing() {
         <div className="flex justify-between items-end flex-wrap gap-3 mb-10">
           <h2 className="font-display font-semibold text-[26px]">The four-step pipeline</h2>
           <p className="text-[13.5px] text-muted max-w-[38ch]">
-            Every capture session runs the same sequence, end to end, in under
-            ten seconds for a full classroom.
+            Every capture session runs the same sequence, end to end, in under ten seconds for a full classroom.
           </p>
         </div>
+
+        {/* Render one card per pipeline stage */}
         <div className="grid md:grid-cols-4 gap-5">
           {STAGES.map((s) => (
             <div key={s.n} className="border border-rule rounded-sm p-5 bg-[#FBF9F3]">
@@ -136,9 +180,7 @@ export default function Landing() {
 
       {/* ---------- STACK STRIP ---------- */}
       <section id="stack" className="bg-ink text-paper px-[6vw] py-9 flex justify-between items-center flex-wrap gap-5">
-        <span className="font-mono text-[11.5px] text-paper/50 uppercase tracking-[0.1em]">
-          Built with
-        </span>
+        <span className="font-mono text-[11.5px] text-paper/50 uppercase tracking-[0.1em]">Built with</span>
         <div className="flex gap-2.5 flex-wrap">
           {STACK.map((s) => (
             <span key={s} className="font-mono text-[12px] border border-white/15 rounded-full px-3.5 py-[7px] text-paper/85">
@@ -148,22 +190,40 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ---------- OBJECTIVES / SCOPE (grounded in the proposal) ---------- */}
+      {/* ---------- OBJECTIVES / SCOPE ---------- */}
       <section className="px-[6vw] py-16 border-t border-rule grid md:grid-cols-2 gap-10">
         <div>
           <h2 className="font-display font-semibold text-[24px] mb-4">What it replaces</h2>
           <ul className="space-y-3 text-[14px] text-ink2/80">
-            <li className="flex gap-3"><span className="text-stamp-red font-mono">✕</span>Proxy attendance — one student answering for another.</li>
-            <li className="flex gap-3"><span className="text-stamp-red font-mono">✕</span>5–10 minutes lost to roll call, every class, every day.</li>
-            <li className="flex gap-3"><span className="text-stamp-red font-mono">✕</span>End-of-semester percentage errors that block exam eligibility.</li>
+            <li className="flex gap-3">
+              <span className="text-stamp-red font-mono">✕</span>
+              Proxy attendance — one student answering for another.
+            </li>
+            <li className="flex gap-3">
+              <span className="text-stamp-red font-mono">✕</span>
+              5–10 minutes lost to roll call, every class, every day.
+            </li>
+            <li className="flex gap-3">
+              <span className="text-stamp-red font-mono">✕</span>
+              End-of-semester percentage errors that block exam eligibility.
+            </li>
           </ul>
         </div>
         <div>
           <h2 className="font-display font-semibold text-[24px] mb-4">What it guarantees</h2>
           <ul className="space-y-3 text-[14px] text-ink2/80">
-            <li className="flex gap-3"><span className="text-stamp-green font-mono">✓</span>≥ 85% recognition accuracy under standard classroom lighting.</li>
-            <li className="flex gap-3"><span className="text-stamp-green font-mono">✓</span>Under 10 seconds from photo to database record.</li>
-            <li className="flex gap-3"><span className="text-stamp-green font-mono">✓</span>Real-time visibility for students, faculty, and admins alike.</li>
+            <li className="flex gap-3">
+              <span className="text-stamp-green font-mono">✓</span>
+              ≥ 85% recognition accuracy under standard classroom lighting.
+            </li>
+            <li className="flex gap-3">
+              <span className="text-stamp-green font-mono">✓</span>
+              Under 10 seconds from photo to database record.
+            </li>
+            <li className="flex gap-3">
+              <span className="text-stamp-green font-mono">✓</span>
+              Real-time visibility for students, faculty, and admins alike.
+            </li>
           </ul>
         </div>
       </section>
@@ -185,6 +245,7 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Footer text at the bottom of the page */}
       <footer className="px-[6vw] py-7 border-t border-rule flex justify-between flex-wrap gap-2 font-mono text-[11.5px] text-muted">
         <span>SMART ATTENDANCE SYSTEM · NCIT, BALKUMARI, LALITPUR</span>
         <span>POKHARA UNIVERSITY · BE (IT) MINOR PROJECT</span>

@@ -1,3 +1,7 @@
+/*
+  Sidebar.jsx renders the left-hand navigation panel used by all dashboard pages.
+  It shows the current role, navigation items, the signed-in user, and a sign-out button.
+*/
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -7,6 +11,7 @@ export default function Sidebar({ roleLabel, items, activeIndex, who, whoSub }) 
 
   return (
     <aside className="bg-ink text-paper flex flex-col p-5 w-[220px] shrink-0">
+      {/* Brand header at the top of the sidebar */}
       <div className="flex items-center gap-2 pb-6 px-1">
         <div className="w-2.5 h-2.5 bg-stamp-amber rounded-[2px]" />
         <span className="font-display font-semibold text-[15px] tracking-tight">
@@ -15,9 +20,12 @@ export default function Sidebar({ roleLabel, items, activeIndex, who, whoSub }) 
       </div>
 
       <div className="mb-5">
+        {/* Role label above the navigation links */}
         <div className="font-mono text-[10px] tracking-[0.1em] text-paper/40 uppercase px-2 mb-2">
           {roleLabel}
         </div>
+
+        {/* Navigation items for the current dashboard role */}
         <nav className="flex flex-col gap-0.5">
           {items.map((label, i) => (
             <div
@@ -34,9 +42,11 @@ export default function Sidebar({ roleLabel, items, activeIndex, who, whoSub }) 
         </nav>
       </div>
 
+      {/* User profile area and sign-out button at the bottom */}
       <div className="mt-auto pt-4 border-t border-white/10">
         <div className="flex items-center gap-2.5 mb-3">
           <div className="w-8 h-8 rounded-[6px] bg-stamp-amber/15 border border-stamp-amber/40 flex items-center justify-center font-mono text-[11px] text-stamp-amber">
+            {/* First initial or fallback placeholder */}
             {who?.[0] ?? "?"}
           </div>
           <div className="text-[12.5px] leading-tight">

@@ -14,13 +14,17 @@ import React, { createContext, useContext, useState } from "react";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null); // { name, role: 'student'|'faculty'|'admin', ... }
+  // User state stores the currently signed-in user.
+  // Example shape: { name, role: 'student'|'faculty'|'admin', ... }
+  const [user, setUser] = useState(null);
 
+  // Fake login helper used in the demo until backend auth is connected.
   function login(role, name) {
     // TODO(backend): swap for `await api.post('/auth/login', {email, password})`
     setUser({ role, name });
   }
 
+  // Log the user out by clearing the current user state.
   function logout() {
     setUser(null);
   }

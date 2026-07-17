@@ -1,3 +1,7 @@
+/*
+  App.jsx is the top-level React component that defines the client-side routes
+  for the entire attendance system frontend.
+*/
 import { Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing.jsx";
 import Login from "./pages/Login.jsx";
@@ -8,11 +12,21 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 export default function App() {
   return (
+    /*
+      <Routes> is the container for all route definitions.
+      React Router uses it to match the current URL and render the correct page.
+    */
     <Routes>
-      {/* The landing page is the site's root — matches the proposal's public-facing entry point */}
+      {/* Public route: landing page at the root URL */}
       <Route path="/" element={<Landing />} />
+
+      {/* Public route: login page for all users */}
       <Route path="/login" element={<Login />} />
 
+      {/*
+        Protected routes: these pages are only accessible if the current user has
+        the required role. The ProtectedRoute component wraps the page content.
+      */}
       <Route
         path="/student"
         element={
@@ -21,6 +35,7 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/faculty"
         element={
@@ -29,6 +44,7 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/admin"
         element={

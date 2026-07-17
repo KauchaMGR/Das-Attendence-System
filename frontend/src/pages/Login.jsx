@@ -1,7 +1,16 @@
+/*
+  Login.jsx renders the sign-in page and lets the user choose a demo role.
+  This page is currently a front-end stub: the backend authentication flow is
+  not yet implemented, so the selected role is applied locally.
+*/
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
+/*
+  ROLES defines the available login roles for the demo.
+  Each role has a display label and the dashboard route it navigates to.
+*/
 const ROLES = [
   { key: "student", label: "Student", name: "Sittal Pantha", path: "/student" },
   { key: "faculty", label: "Faculty", name: "Prof. R. Karki", path: "/faculty" },
@@ -9,9 +18,11 @@ const ROLES = [
 ];
 
 export default function Login() {
+  // Local form state for the demo login page.
   const [role, setRole] = useState("student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -19,13 +30,18 @@ export default function Login() {
     e.preventDefault();
     // TODO(backend): POST /auth/login {email, password} -> {token, role}
     const chosen = ROLES.find((r) => r.key === role);
+
+    // Simulate a login by storing the selected role and name in auth context.
     login(role, chosen.name);
+
+    // Navigate to the dashboard for the chosen role.
     navigate(chosen.path);
   }
 
   return (
     <div className="min-h-screen bg-paper flex items-center justify-center px-6">
       <div className="w-full max-w-[400px]">
+        {/* Brand link back to the landing page */}
         <Link to="/" className="flex items-center gap-2 justify-center mb-8">
           <div className="w-2.5 h-2.5 bg-stamp-green rounded-[2px]" />
           <span className="font-display font-semibold text-[16px] text-ink">AttendSys</span>
@@ -38,6 +54,7 @@ export default function Login() {
             arrives with the FastAPI + JWT backend.
           </p>
 
+          {/* Role selector buttons */}
           <div className="grid grid-cols-3 gap-2 mb-5">
             {ROLES.map((r) => (
               <button
@@ -56,6 +73,7 @@ export default function Login() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Email input field */}
             <div>
               <label className="block text-[12px] text-muted mb-1">College email</label>
               <input
@@ -67,6 +85,8 @@ export default function Login() {
                 className="w-full border border-rule rounded-[3px] px-3 py-2.5 text-[13.5px] bg-white focus-ring"
               />
             </div>
+
+            {/* Password input field */}
             <div>
               <label className="block text-[12px] text-muted mb-1">Password</label>
               <input
@@ -78,6 +98,8 @@ export default function Login() {
                 className="w-full border border-rule rounded-[3px] px-3 py-2.5 text-[13.5px] bg-white focus-ring"
               />
             </div>
+
+            {/* Submit button uses the selected role label */}
             <button
               type="submit"
               className="w-full bg-stamp-green text-paper font-semibold text-[14px] py-2.5 rounded-[3px] mt-2 hover:opacity-90 transition-opacity focus-ring"

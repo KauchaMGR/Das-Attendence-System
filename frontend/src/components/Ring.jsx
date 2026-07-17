@@ -1,3 +1,7 @@
+/*
+  Ring.jsx renders a small circular progress indicator.
+  It uses a CSS conic-gradient to show the attendance percentage visually.
+*/
 export default function Ring({ percent, label = "PRESENT" }) {
   return (
     <div

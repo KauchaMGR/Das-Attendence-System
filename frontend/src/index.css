@@ -1,23 +1,34 @@
+/*
+  Tailwind directives: these import Tailwind's default reset, component utilities, and utility classes.
+  The Tailwind plugin processes these directives when Vite builds the app.
+*/
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Smooth scrolling for anchor links and programmatic scroll behavior */
 html {
   scroll-behavior: smooth;
 }
 
+/* Global body styles for the app */
 body {
   font-family: "IBM Plex Sans", sans-serif;
   color: #1e2620;
 }
 
+/* Custom Tailwind utility class defined inside a Tailwind layer. */
 @layer utilities {
   .focus-ring {
+    /* Use Tailwind's @apply to compose utility classes into a reusable selector. */
     @apply outline-none focus-visible:ring-2 focus-visible:ring-stamp-green focus-visible:ring-offset-2 focus-visible:ring-offset-paper;
   }
 }
 
-/* ---------- Rubber-stamp status mark: the signature element ---------- */
+/*
+  The `.stamp` block is a custom decorative status label.
+  Each state variant uses the same base layout with different colors.
+*/
 .stamp {
   font-family: "IBM Plex Mono", monospace;
   font-size: 11px;
@@ -32,6 +43,8 @@ body {
   border: 1.5px solid currentColor;
   transform: rotate(-1.2deg);
 }
+
+/* Variant colors for the stamp component */
 .stamp.present {
   color: #2f6b4f;
   background: #2f6b4f0f;
@@ -49,7 +62,10 @@ body {
   background: #736c580f;
 }
 
-/* Ledger rule background, used behind hero + tables */
+/*
+  `.ledger-bg` is a decorative repeated background used behind hero sections or tables.
+  It creates a faint horizontal rule pattern.
+*/
 .ledger-bg {
   background-image: repeating-linear-gradient(
     to bottom,
@@ -59,13 +75,14 @@ body {
   );
 }
 
+/* Simple card style used for containers and panels */
 .card {
   background: #fbf9f3;
   border: 1px solid #d9d0b9;
   border-radius: 4px;
 }
 
-/* Roll-number tab, used as a recurring structural motif (roll no. margin of a register) */
+/* A small label style for roll numbers or tab captions */
 .roll-tab {
   font-family: "IBM Plex Mono", monospace;
   font-size: 10.5px;
