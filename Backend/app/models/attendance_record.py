@@ -10,6 +10,7 @@ class AttendanceRecord:
         session_id: str,
         is_present: bool,
         marked_by: str,
+        confidence: float | None = None,
         timestamp: datetime | None = None,
     ):
         self.record_id = record_id
@@ -18,6 +19,7 @@ class AttendanceRecord:
         self.session_id = session_id
         self.is_present = is_present
         self.marked_by = marked_by
+        self.confidence = confidence
         self.timestamp = timestamp or datetime.utcnow()
 
     def to_dict(self):
@@ -28,5 +30,6 @@ class AttendanceRecord:
             "session_id": self.session_id,
             "is_present": self.is_present,
             "marked_by": self.marked_by,
+            "confidence": self.confidence,
             "timestamp": self.timestamp,
         }

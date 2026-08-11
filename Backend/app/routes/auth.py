@@ -35,10 +35,10 @@ def login(login_data: UserLogin):
 
     try:
 
-        token = login_user(login_data)
+        result = login_user(login_data)
 
         return {
-            "access_token": token,
+            **result,
             "token_type": "bearer"
         }
 

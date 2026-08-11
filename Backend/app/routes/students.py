@@ -30,12 +30,13 @@ def create(student: StudentCreate):
 
     try:
 
-        student_id = create_student(student)
+        student_id, default_password = create_student(student)
 
         return {
             "success": True,
             "message": "Student created successfully",
-            "student_id": student_id
+            "student_id": student_id,
+            "default_password": default_password
         }
 
     except ValueError as e:

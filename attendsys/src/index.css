@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "IBM Plex Sans", sans-serif;
+  color: #1e2620;
+}
+
+@layer utilities {
+  /* Consistent focus outline for keyboard navigation / accessibility */
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-stamp-green focus-visible:ring-offset-2 focus-visible:ring-offset-paper;
+  }
+}
+
+/* ==========================================================================
+   .stamp — the rubber-stamp status badge (Present / Late / Absent).
+   Used by <StatusStamp /> everywhere a record's status needs to be shown.
+   The 3 status variants below map 1:1 to the AttendanceStatus type on the
+   backend ("present" | "late" | "absent").
+   ========================================================================== */
+.stamp {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 3px;
+  border: 1.5px solid currentColor;
+  transform: rotate(-1.2deg); /* slight tilt = "stamped" feel */
+}
+.stamp.present {
+  color: #2f6b4f;
+  background: #2f6b4f0f;
+}
+.stamp.late {
+  color: #b8842c;
+  background: #b8842c0f;
+}
+.stamp.absent {
+  color: #ae3b2e;
+  background: #ae3b2e0f;
+}
+.stamp.neutral {
+  color: #736c58;
+  background: #736c580f;
+}
+
+/* Faint horizontal ruled lines, evokes a physical attendance register page */
+.ledger-bg {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 27px,
+    #d9d0b9 28px
+  );
+}
+
+/* Base card container used by <Card /> throughout the dashboards */
+.card {
+  background: #fbf9f3;
+  border: 1px solid #d9d0b9;
+  border-radius: 4px;
+}
+
+/* Small monospace "roll number" label, e.g. in roster tables */
+.roll-tab {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  color: #736c58;
+}

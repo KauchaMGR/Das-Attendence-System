@@ -4,12 +4,12 @@ import os
 
 load_dotenv()
 
-MONGODB_URL = os.getenv("mongodb://127.0.0.1:27017/attendance_db")
-DATABASE_NAME = os.getenv("face_attendance_system")
+MONGODB_URL = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017")
+DATABASE_NAME = os.getenv("DB_NAME", "face_attendance_system")
 
-client = MongoClient("mongodb://127.0.0.1:27017/attendance_db")
+client = MongoClient(MONGODB_URL)
 
-db = client["face_attendance_system"]
+db = client[DATABASE_NAME]
 
 users = db["users"]
 students = db["students"]

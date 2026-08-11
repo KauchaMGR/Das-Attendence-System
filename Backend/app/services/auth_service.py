@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from app.config.database import users
+from app.config.database import users, students, faculty
 from app.models.user import User
 from app.utils.password import hash_password, verify_password
 from app.utils.jwt_handler import create_access_token
@@ -49,12 +49,37 @@ def login_user(login_data):
     ):
         raise ValueError("Incorrect Password")
 
+    user_id = str(user["_id"])
+
+    profile = {}
+
+    if user["role"] == "student":
+
+        student = students.find_one({"user_id": user_id})
+
+        if student:
+            profile["student_id"] = student["student_id"]
+
+    elif user["role"] == "faculty":
+
+        f = faculty.find_one({"user_id": user_id})
+
+        if f:
+            profile["faculty_id"] = f["faculty_id"]
+            profile["subjects_assigned"] = f.get("subjects_assigned", [])
+
     token = create_access_token(
         {
-            "user_id": str(user["_id"]),
+            "user_id": user_id,
             "email": user["email"],
-            "role": user["role"]
+            "role": user["role"],
+            **profile
         }
     )
 
-    return token
+    return {
+        "access_token": token,
+        "role": user["role"],
+        "fullname": user["fullname"],
+        **profile
+    }

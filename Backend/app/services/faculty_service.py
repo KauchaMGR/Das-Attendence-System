@@ -1,5 +1,7 @@
-from app.config.database import faculty
+from app.config.database import faculty, users
 from app.models.faculty import Faculty
+from app.models.user import User
+from app.utils.password import hash_password
 
 
 def create_faculty(data):
@@ -13,11 +15,27 @@ def create_faculty(data):
     if existing:
         raise ValueError("Faculty already exists")
 
+    if users.find_one({"email": data.email}):
+        raise ValueError("Email already exists")
+
+    # Same pattern as students: a login account with a known default
+    # password is created alongside the faculty profile.
+    default_password = f"{data.faculty_id}@123"
+
+    new_user = User(
+        fullname=data.fullname,
+        email=data.email,
+        hashed_password=hash_password(default_password),
+        role="faculty"
+    )
+
+    user_result = users.insert_one(new_user.to_dict())
+
     new_faculty = Faculty(
         data.faculty_id,
         data.fullname,
         data.email,
-        data.user_id,
+        str(user_result.inserted_id),
         data.subjects_assigned
     )
 
@@ -25,7 +43,7 @@ def create_faculty(data):
         new_faculty.to_dict()
     )
 
-    return str(result.inserted_id)
+    return str(result.inserted_id), default_password
 
 
 def get_faculties():

@@ -24,7 +24,7 @@ def create(data: FacultyCreate):
 
     try:
 
-        faculty_id = create_faculty(data)
+        faculty_id, default_password = create_faculty(data)
 
         return {
 
@@ -32,7 +32,9 @@ def create(data: FacultyCreate):
 
             "message": "Faculty created successfully",
 
-            "faculty_id": faculty_id
+            "faculty_id": faculty_id,
+
+            "default_password": default_password
         }
 
     except ValueError as e:

@@ -1,5 +1,7 @@
-from app.config.database import students
+from app.config.database import students, users
 from app.models.student import Student
+from app.models.user import User
+from app.utils.password import hash_password
 
 
 def create_student(student):
@@ -13,6 +15,22 @@ def create_student(student):
     if existing:
         raise ValueError("Student already exists")
 
+    if users.find_one({"email": student.email}):
+        raise ValueError("Email already exists")
+
+    # Every new student gets a login account with a known default password,
+    # so the admin has something to hand them immediately (no email/SMS flow).
+    default_password = f"{student.student_id}@123"
+
+    new_user = User(
+        fullname=student.fullname,
+        email=student.email,
+        hashed_password=hash_password(default_password),
+        role="student"
+    )
+
+    user_result = users.insert_one(new_user.to_dict())
+
     new_student = Student(
         student.student_id,
         student.fullname,
@@ -20,14 +38,14 @@ def create_student(student):
         student.section,
         student.semester,
         student.address,
-        student.user_id
+        str(user_result.inserted_id)
     )
 
     result = students.insert_one(
         new_student.to_dict()
     )
 
-    return str(result.inserted_id)
+    return str(result.inserted_id), default_password
 
 #get all students
 def get_students():

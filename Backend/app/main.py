@@ -1,63 +1,46 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-# Import to load models at startup
-#import models.face_model   # ← This line loads YOLO + InsightFace
-
-#from routers import register, attendance
-
-app = FastAPI(title="Smart Attendance System")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# app.include_router(register.router)
-# app.include_router(attendance.router)
-
-@app.get("/")
-async def root():
-    return {"message": "Smart Attendance Backend is Running ✅"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
-    #auth.py api router
-    from fastapi import FastAPI
-
-from app.routes.auth import router as auth_router
-
-app = FastAPI(
-    title="Face Recognition Attendance System"
-)
-
-app.include_router(auth_router)
-
-
-@app.get("/")
-def home():
-
-    return {
-
-        "message":"Attendance System API Running"
-    }
-
-from fastapi import FastAPI
 
 from app.routes.auth import router as auth_router
 from app.routes.students import router as student_router
 from app.routes.faculty import router as faculty_router
 from app.routes.subjects import router as subject_router
 from app.routes.face import router as face_router
+from app.routes.attendance import router as attendance_router
+
+from app.services.recognition_service import load_models
+from app.services.seed_service import seed_defaults
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Warm up the YuNet + SFace models once at boot instead of on the
+    # first /faces/enroll or /attendance/mark request.
+    load_models()
+
+    # Idempotent — only creates the default admin/faculty accounts if
+    # they don't already exist, so this is safe on every restart.
+    seed_defaults()
+
+    yield
 
 
 app = FastAPI(
-    title="Face Recognition Attendance System"
+    title="Smart Attendance System",
+    lifespan=lifespan
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(auth_router)
@@ -65,7 +48,14 @@ app.include_router(student_router)
 app.include_router(faculty_router)
 app.include_router(subject_router)
 app.include_router(face_router)
+app.include_router(attendance_router)
+
 
 @app.get("/")
 def home():
-    return {"message": "API Running"}
+    return {"message": "Smart Attendance Backend API is Running"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

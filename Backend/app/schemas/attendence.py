@@ -10,6 +10,7 @@ class AttendanceCreate(BaseModel):
     session_id: str
     is_present: bool
     marked_by: str
+    confidence: float | None = None
 
 
 class AttendanceUpdate(BaseModel):
@@ -25,4 +26,5 @@ class AttendanceResponse(BaseModel):
     session_id: str
     is_present: bool
     marked_by: str
+    confidence: float | None = None
     timestamp: datetime
