@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 
 from app.services.recognition_service import (
@@ -11,8 +13,13 @@ from app.services.attendance_service import (
     mark_attendance,
     log_session,
     get_records,
-    get_student_summary
+    get_student_summary,
+    get_low_attendance,
+    get_session_records,
+    get_subject_roster,
+    get_admin_overview
 )
+from app.services.settings_service import get_settings
 
 router = APIRouter(
     prefix="/attendance",
@@ -91,4 +98,77 @@ def read_records(session_id: str):
     return {
         "success": True,
         "records": get_records(session_id)
+    }
+
+
+def _resolve_days(days: Optional[int]) -> int:
+    """`days` query param, falling back to the admin-configured history_days
+    setting when the caller doesn't pass one."""
+
+    return days if days is not None else get_settings().get("history_days", 14)
+
+
+@router.get("/subject/{subject_code}/alerts")
+def read_low_attendance(subject_code: str, days: Optional[int] = None, threshold: Optional[float] = None):
+
+    try:
+
+        return {
+            "success": True,
+            "days": _resolve_days(days),
+            "alerts": get_low_attendance(subject_code, _resolve_days(days), threshold)
+        }
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+
+
+@router.get("/subject/{subject_code}/records")
+def read_session_records(subject_code: str, days: Optional[int] = None):
+
+    try:
+
+        return {
+            "success": True,
+            "days": _resolve_days(days),
+            "records": get_session_records(subject_code, _resolve_days(days))
+        }
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+
+
+@router.get("/subject/{subject_code}/students")
+def read_subject_roster(subject_code: str, days: Optional[int] = None):
+
+    try:
+
+        return {
+            "success": True,
+            **get_subject_roster(subject_code, days)
+        }
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+
+
+@router.get("/report/overview")
+def read_admin_overview(days: Optional[int] = None):
+
+    return {
+        "success": True,
+        "days": _resolve_days(days),
+        **get_admin_overview(_resolve_days(days))
     }

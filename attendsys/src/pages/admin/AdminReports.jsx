@@ -4,26 +4,33 @@ import Card from "../../components/Card.jsx";
 import { api } from "../../services/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
 /**
  * AdminReports — "/admin/reports"
  *
- * Campus-wide attendance trends: a simple 7-day bar chart (plain CSS bars,
- * no charting library needed for this) + subject averages + a CSV export.
- * Maps to: GET /api/admin/reports/overview -> api.getAdminReport()
+ * Same real call as AdminOverview (api.getAdminReport()), just presented in
+ * more detail. CSV export includes the trend rows and states the window
+ * explicitly, so exported data always matches what's on screen.
+ * Maps to: GET /attendance/report/overview?days= -> api.getAdminReport()
  */
 export default function AdminReports() {
-  const { user } = useAuth();
+  const { user, settings } = useAuth();
   const [report, setReport] = useState(null);
 
   useEffect(() => {
-    api.getAdminReport().then(setReport);
-  }, []);
+    api.getAdminReport(settings.historyDays).then(setReport);
+  }, [settings.historyDays]);
 
   function exportCsv() {
     if (!report) return;
-    const rows = [["Subject", "Average %"], ...report.subjectAverages.map((s) => [s.subject, s.avg])];
+    const rows = [
+      [`Window: last ${report.days} days, Sat/Sun excluded`],
+      [],
+      ["Date", "Day", "% present"],
+      ...report.dailyTrend.map((d) => [d.date, d.dayLabel, d.pct]),
+      [],
+      ["Subject", "Average %"],
+      ...report.subjectAverages.map((s) => [s.subject, s.avg]),
+    ];
     const csv = rows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -43,13 +50,13 @@ export default function AdminReports() {
     );
   }
 
-  const maxTrend = Math.max(...report.weeklyAttendanceTrend);
+  const maxTrend = Math.max(1, ...report.dailyTrend.map((d) => d.pct));
 
   return (
     <>
       <Topbar
         title="Reports"
-        sub="Campus-wide attendance trends"
+        sub={`Campus-wide · last ${report.days} days · Sat/Sun excluded`}
         basePath="/admin"
         who={user?.name}
         unreadCount={2}
@@ -61,19 +68,23 @@ export default function AdminReports() {
       />
 
       <div className="grid md:grid-cols-2 gap-5 mb-5">
-        <Card title="Weekly attendance trend" sub="% present, last 7 days">
-          <div className="flex items-end gap-3 h-[140px]">
-            {report.weeklyAttendanceTrend.map((pct, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                <div
-                  className="w-full bg-stamp-green/80 rounded-t-[2px]"
-                  style={{ height: `${(pct / maxTrend) * 110}px` }}
-                  title={`${pct}%`}
-                />
-                <span className="font-mono text-[10px] text-muted">{DAY_LABELS[i]}</span>
-              </div>
-            ))}
-          </div>
+        <Card title="Attendance trend" sub={`% present, last ${report.days} days`}>
+          {report.dailyTrend.length === 0 ? (
+            <div className="text-[13px] text-muted py-6 text-center">No capture sessions in this window yet.</div>
+          ) : (
+            <div className="flex items-end gap-3 h-[140px]">
+              {report.dailyTrend.map((d) => (
+                <div key={d.date} className="flex-1 flex flex-col items-center gap-2">
+                  <div
+                    className="w-full bg-stamp-green/80 rounded-t-[2px]"
+                    style={{ height: `${(d.pct / maxTrend) * 110}px` }}
+                    title={`${d.pct}%`}
+                  />
+                  <span className="font-mono text-[10px] text-muted">{d.dayLabel}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         <Card title="At a glance">
@@ -83,18 +94,22 @@ export default function AdminReports() {
                 <td className="py-2.5 font-mono text-muted">Students below 75%</td>
                 <td className="py-2.5 text-right text-stamp-red font-semibold">{report.lowAttendanceCount}</td>
               </tr>
-              <tr>
+              <tr className="border-b border-rule/70">
                 <td className="py-2.5 font-mono text-muted">Best-performing subject</td>
                 <td className="py-2.5 text-right">
-                  {[...report.subjectAverages].sort((a, b) => b.avg - a.avg)[0]?.subject}
+                  {[...report.subjectAverages].sort((a, b) => b.avg - a.avg)[0]?.subject ?? "—"}
                 </td>
+              </tr>
+              <tr>
+                <td className="py-2.5 font-mono text-muted">Scans today</td>
+                <td className="py-2.5 text-right">{report.scansToday}</td>
               </tr>
             </tbody>
           </table>
         </Card>
       </div>
 
-      <Card title="Subject averages" sub="Campus-wide">
+      <Card title="Subject averages" sub={`Campus-wide · last ${report.days} days`}>
         <table className="w-full text-[13px]">
           <thead>
             <tr className="text-left font-mono text-[10.5px] text-muted uppercase tracking-wide border-b border-rule">

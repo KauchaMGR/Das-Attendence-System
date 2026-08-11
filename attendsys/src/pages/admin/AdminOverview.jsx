@@ -5,43 +5,34 @@ import StatusStamp from "../../components/StatusStamp.jsx";
 import { api } from "../../services/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
 /**
  * AdminOverview — "/admin" (index route).
  *
- * DATA FLOW:
- *   api.getAdminStats()  -> GET /api/admin/stats/overview
- *   api.getAdminReport() -> GET /api/admin/reports/overview
+ * DATA FLOW: api.getAdminReport() -> GET /attendance/report/overview?days=
+ * — one real call for everything on this page (enrolled students, scans
+ * today, avg. match confidence, the trend, subject averages, and the
+ * below-75% count). See DOCUMENTATION.md §8.
  *
- * CHANGES PER REQUEST:
- *   - "Devices online" stat + the whole "Device status" card are gone —
- *     this system doesn't track camera/device hardware info, so
- *     api.getDevices() is no longer called here (or anywhere).
- *   - The "Enrollment queue" preview card is gone too. In its place: a
- *     7-day attendance trend + subject averages snapshot (same data the
- *     full Admin > Reports page uses), which is more immediately useful
- *     on a landing/overview screen than a queue you can already see in
- *     full on the Enrollment page.
+ * Trend bars are one per school day that actually held a class in the
+ * window — weekend days are never plotted (see the ground rule in §8), so
+ * day labels come from the real dates returned, not a fixed Mon–Sun array.
  */
 export default function AdminOverview() {
-  const { user } = useAuth();
-  const [stats, setStats] = useState(null);
+  const { user, settings } = useAuth();
   const [report, setReport] = useState(null);
 
   useEffect(() => {
-    api.getAdminStats().then(setStats);
-    api.getAdminReport().then(setReport);
-  }, []);
+    api.getAdminReport(settings.historyDays).then(setReport);
+  }, [settings.historyDays]);
 
-  const STAT_LABELS = stats && report && [
-    ["Enrolled students", stats.enrolledStudents],
-    ["Scans today", stats.scansToday],
-    ["Avg. match confidence", `${stats.avgConfidence}%`],
+  const STAT_LABELS = report && [
+    ["Enrolled students", report.enrolledStudents],
+    ["Scans today", report.scansToday],
+    ["Avg. match confidence", `${report.avgConfidence}%`],
     ["Below 75% attendance", report.lowAttendanceCount],
   ];
 
-  const maxTrend = report ? Math.max(...report.weeklyAttendanceTrend) : 1;
+  const maxTrend = report ? Math.max(1, ...report.dailyTrend.map((d) => d.pct)) : 1;
 
   return (
     <>
@@ -64,22 +55,26 @@ export default function AdminOverview() {
 
       {report && (
         <div className="grid md:grid-cols-2 gap-5">
-          <Card title="Weekly attendance trend" sub="% present, last 7 days">
-            <div className="flex items-end gap-3 h-[120px]">
-              {report.weeklyAttendanceTrend.map((pct, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                  <div
-                    className="w-full bg-stamp-green/80 rounded-t-[2px]"
-                    style={{ height: `${(pct / maxTrend) * 90}px` }}
-                    title={`${pct}%`}
-                  />
-                  <span className="font-mono text-[10px] text-muted">{DAY_LABELS[i]}</span>
-                </div>
-              ))}
-            </div>
+          <Card title="Attendance trend" sub={`% present, last ${report.days} days (Sat/Sun excluded)`}>
+            {report.dailyTrend.length === 0 ? (
+              <div className="text-[13px] text-muted py-6 text-center">No capture sessions in this window yet.</div>
+            ) : (
+              <div className="flex items-end gap-3 h-[120px]">
+                {report.dailyTrend.map((d) => (
+                  <div key={d.date} className="flex-1 flex flex-col items-center gap-2">
+                    <div
+                      className="w-full bg-stamp-green/80 rounded-t-[2px]"
+                      style={{ height: `${(d.pct / maxTrend) * 90}px` }}
+                      title={`${d.pct}%`}
+                    />
+                    <span className="font-mono text-[10px] text-muted">{d.dayLabel}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
 
-          <Card title="Subject averages" sub="Campus-wide, this semester">
+          <Card title="Subject averages" sub={`Last ${report.days} days`}>
             {report.subjectAverages.map((s) => (
               <div key={s.subject} className="flex justify-between py-2 border-b border-rule/70 last:border-0 text-[13px]">
                 <span>{s.subject}</span>

@@ -81,5 +81,6 @@ def login_user(login_data):
         "access_token": token,
         "role": user["role"],
         "fullname": user["fullname"],
+        "email": user["email"],
         **profile
     }

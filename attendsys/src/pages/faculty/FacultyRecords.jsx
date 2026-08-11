@@ -7,38 +7,58 @@ import { useAuth } from "../../context/AuthContext.jsx";
 /**
  * FacultyRecords — "/faculty/records"
  *
- * Past capture sessions this faculty has run, one row per session (not
- * per-student — that level of detail lives on the Live Session roster and
- * on the student's own history page). Maps to:
- *   GET /api/faculty/records?subject=&date=
+ * Past capture sessions for this faculty's one assigned subject (business
+ * rule: one faculty, one subject — see DOCUMENTATION.md §8), one row per
+ * session, restricted to the admin-configured "last N days" window with
+ * Saturdays/Sundays excluded. Maps to: GET /attendance/subject/{code}/records?days=
  */
 export default function FacultyRecords() {
-  const { user } = useAuth();
-  const [records, setRecords] = useState([]);
-  const [subjectFilter, setSubjectFilter] = useState("all");
+  const { user, settings } = useAuth();
+  const [subjects, setSubjects] = useState([]);
+  const [subjectCode, setSubjectCode] = useState("");
+  const [result, setResult] = useState({ days: settings.historyDays, records: [] });
 
   useEffect(() => {
-    api.getFacultyRecords({ subject: subjectFilter === "all" ? undefined : subjectFilter }).then(setRecords);
-  }, [subjectFilter]);
+    api.getFacultySubjects(user?.subjectsAssigned || []).then((subs) => {
+      setSubjects(subs);
+      if (subs.length > 0) setSubjectCode(subs[0].subject_code);
+    });
+  }, []);
 
-  const subjectOptions = ["all", ...new Set(records.map((r) => r.subject))];
+  useEffect(() => {
+    if (!subjectCode) return;
+    const currentSubject = subjects.find((s) => s.subject_code === subjectCode);
+    api.getFacultyRecords(subjectCode, settings.historyDays, currentSubject?.subject_name).then(setResult);
+  }, [subjectCode, settings.historyDays, subjects]);
+
+  const currentSubject = subjects.find((s) => s.subject_code === subjectCode);
 
   return (
     <>
-      <Topbar title="Attendance records" sub="Past capture sessions" basePath="/faculty" who={user?.name} unreadCount={1} />
+      <Topbar
+        title="Attendance records"
+        sub={`Last ${result.days} days · Sat/Sun excluded`}
+        basePath="/faculty"
+        who={user?.name}
+        unreadCount={1}
+      />
 
       <Card>
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <span className="text-[13px] text-muted">{records.length} session(s)</span>
-          <select
-            value={subjectFilter}
-            onChange={(e) => setSubjectFilter(e.target.value)}
-            className="border border-rule rounded-[3px] px-3 py-1.5 text-[12.5px] bg-white focus-ring"
-          >
-            {subjectOptions.map((s) => (
-              <option key={s} value={s}>{s === "all" ? "All subjects" : s}</option>
-            ))}
-          </select>
+          <span className="text-[13px] text-muted">
+            {currentSubject ? currentSubject.subject_name : "No subject assigned"} · {result.records.length} session(s)
+          </span>
+          {subjects.length > 1 && (
+            <select
+              value={subjectCode}
+              onChange={(e) => setSubjectCode(e.target.value)}
+              className="border border-rule rounded-[3px] px-3 py-1.5 text-[12.5px] bg-white focus-ring"
+            >
+              {subjects.map((s) => (
+                <option key={s.subject_code} value={s.subject_code}>{s.subject_name}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         <table className="w-full text-[13px]">
@@ -52,17 +72,21 @@ export default function FacultyRecords() {
             </tr>
           </thead>
           <tbody>
-            {records.map((r, i) => (
+            {result.records.map((r, i) => (
               <tr key={i} className="border-b border-rule/70 last:border-0">
                 <td className="py-2.5 font-mono text-[12px]">{r.date}</td>
                 <td className="py-2.5">{r.subject}</td>
                 <td className="py-2.5 text-stamp-green">{r.present}</td>
                 <td className="py-2.5 text-stamp-red">{r.absent}</td>
-                <td className="py-2.5 text-right font-mono text-[12px]">{r.avgConfidence}%</td>
+                <td className="py-2.5 text-right font-mono text-[12px]">{r.avgConfidence != null ? `${r.avgConfidence}%` : "—"}</td>
               </tr>
             ))}
           </tbody>
         </table>
+
+        {result.records.length === 0 && (
+          <div className="text-center text-muted text-[13px] py-8">No capture sessions in this window.</div>
+        )}
       </Card>
     </>
   );

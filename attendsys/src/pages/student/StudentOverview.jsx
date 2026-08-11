@@ -5,43 +5,48 @@ import StatusStamp from "../../components/StatusStamp.jsx";
 import Heatmap from "../../components/Heatmap.jsx";
 import { api } from "../../services/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { greeting } from "../../utils/time.js";
 
 /**
  * StudentOverview — "/student" (index route).
  *
  * DATA FLOW: same three calls as before —
- *   api.getStudentProfile()  -> GET /api/students/me
- *   api.getStudentSubjects() -> GET /api/students/me/subjects
- *   api.getStudentHeatmap()  -> GET /api/students/me/attendance
+ *   api.getStudentProfile()  -> GET /attendance/student/{id}/summary
+ *   api.getStudentSubjects() -> same summary, reshaped as a subject table
+ *   api.getStudentHeatmap()  -> same summary, bucketed into the last
+ *                                `historyDays` calendar days
  *
- * RECENT CHANGES (per request):
- *   - "Late" removed as a tracked status — attendance is now just
- *     present/absent everywhere on this page (breakdown card + heatmap
- *     legend). `student.late` is no longer read or displayed. If your
- *     backend's `attendance_records.status` field still has a "late"
- *     value in MongoDB, either stop writing it, or bucket it into
- *     "present"/"absent" before it reaches the frontend.
- *   - "Camera" row removed from the "Last recognized scan" card — only
- *     confidence and time are shown now.
+ * CHANGES IN THIS PASS (see DOCUMENTATION.md §8):
+ *   - Greeting is now computed from the viewer's local clock instead of a
+ *     hardcoded "Good afternoon".
+ *   - "This semester" card removed per request; "Low-attendance check" is
+ *     now genuinely computed from `subjects` instead of hardcoded copy.
+ *   - "Last recognized scan" time goes through api.js's parseServerDate fix
+ *     (was silently showing UTC as if it were local time).
+ *   - "Last 14 days" heatmap now marks Sat/Sun as a distinct "holiday" cell
+ *     and shows a present/absent/holiday summary line underneath, using the
+ *     admin-configured `historyDays` setting instead of a hardcoded 14.
  */
 export default function StudentOverview() {
-  const { user } = useAuth();
+  const { user, settings } = useAuth();
   const [student, setStudent] = useState(null);
   const [subjects, setSubjects] = useState([]);
-  const [heatmap, setHeatmap] = useState([]);
+  const [heatmap, setHeatmap] = useState(null);
 
   useEffect(() => {
     if (!user?.studentId) return;
     api.getStudentProfile(user.studentId, user.name).then(setStudent);
     api.getStudentSubjects(user.studentId).then(setSubjects);
-    api.getStudentHeatmap(user.studentId).then(setHeatmap);
-  }, [user?.studentId]);
+    api.getStudentHeatmap(user.studentId, settings.historyDays).then(setHeatmap);
+  }, [user?.studentId, settings.historyDays]);
+
+  const lowSubjects = subjects.filter((s) => s.pct < 75);
 
   return (
     <>
       <Topbar
-        title={`Good afternoon, ${(user?.name ?? student?.name ?? "").split(" ")[0]}`}
-        sub={student ? `${student.program}` : ""}
+        title={`${greeting()}, ${(user?.name ?? student?.name ?? "").split(" ")[0]}`}
+        sub={student ? "Your attendance at a glance" : ""}
         basePath="/student"
         unreadCount={2} // TODO(backend): replace with a real unread count from api.getStudentNotifications()
         right={
@@ -57,34 +62,13 @@ export default function StudentOverview() {
         <div className="text-muted text-sm">Loading…</div>
       ) : (
         <>
-          <div className="grid md:grid-cols-3 gap-5 mb-5">
-            <Card title="This semester" sub="Overall standing across all enrolled subjects">
-              {/* Present/Absent only — "Late" removed per request */}
-              <div className="space-y-2 text-[13.5px]">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-[2px] bg-stamp-green" />
-                    Present
-                  </span>
-                  <b>{student.present} days</b>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-[2px] bg-paper2" />
-                    Absent
-                  </span>
-                  <b>{student.absent} days</b>
-                </div>
-              </div>
-            </Card>
-
+          <div className="grid md:grid-cols-2 gap-5 mb-5">
             <Card title="Last recognized scan" sub="Most recent recognition event">
-              {/* "Camera" row removed per request — confidence + time only */}
               <table className="w-full text-[13px]">
                 <tbody>
                   <tr className="border-b border-rule/70">
                     <td className="py-2 font-mono text-muted">Confidence</td>
-                    <td className="py-2 text-right">{student.lastScan.confidence}%</td>
+                    <td className="py-2 text-right">{student.lastScan.confidence != null ? `${student.lastScan.confidence}%` : "—"}</td>
                   </tr>
                   <tr>
                     <td className="py-2 font-mono text-muted">Time</td>
@@ -95,13 +79,20 @@ export default function StudentOverview() {
             </Card>
 
             <Card title="Low-attendance check" sub="Threshold for exam eligibility">
-              {/* TODO(backend): compute this from `subjects` (flag pct < 75)
-                  instead of the hardcoded message below once real data flows in. */}
-              <p className="text-[13px] text-ink2/80 leading-relaxed">
-                You're clear of the 75% threshold in every subject this
-                semester. Database Systems is your closest — keep it above
-                75% to stay exam-eligible.
-              </p>
+              {lowSubjects.length === 0 ? (
+                <p className="text-[13px] text-ink2/80 leading-relaxed">
+                  You're clear of the 75% threshold in every subject this semester.
+                </p>
+              ) : (
+                <div className="space-y-2 text-[13px]">
+                  {lowSubjects.map((s) => (
+                    <div key={s.name} className="flex justify-between">
+                      <span>{s.name}</span>
+                      <span className="font-mono text-stamp-red">{s.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
 
@@ -129,13 +120,21 @@ export default function StudentOverview() {
               </table>
             </Card>
 
-            <Card title="Last 14 days" sub="Daily presence">
-              <Heatmap days={heatmap} />
-              {/* "Late" removed from the legend — present/absent only */}
-              <div className="flex gap-4 mt-4 font-mono text-[10.5px] text-muted">
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-[2px] bg-stamp-green" />Present</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-[2px] bg-paper2" />Absent</span>
-              </div>
+            <Card title={`Last ${settings.historyDays} days`} sub="Daily presence">
+              {heatmap && (
+                <>
+                  <Heatmap days={heatmap.days} />
+                  <div className="flex gap-4 mt-4 font-mono text-[10.5px] text-muted flex-wrap">
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-[2px] bg-stamp-green" />Present</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-[2px] bg-paper2" />Absent</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-[2px]" style={{ background: "#C9C4B6" }} />Holiday (Sat/Sun)</span>
+                  </div>
+                  <p className="text-[12px] text-muted mt-3">
+                    {heatmap.present} present · {heatmap.absent} absent · {heatmap.holiday} holiday(s) —
+                    last {settings.historyDays} days. Saturdays/Sundays are excluded from the absent count.
+                  </p>
+                </>
+              )}
             </Card>
           </div>
         </>

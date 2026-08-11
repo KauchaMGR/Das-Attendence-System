@@ -58,9 +58,10 @@ export default function Sidebar({ roleLabel, items, basePath, who, whoSub }) {
       </div>
 
       <div className="mt-auto pt-4 border-t border-white/10">
-        {/* No profile page exists anymore (removed per request) — this is
-            now just a display block, not a link. */}
-        <div className="flex items-center gap-2.5 mb-3 p-1 -m-1">
+        <NavLink
+          to={`${basePath}/profile`}
+          className="flex items-center gap-2.5 mb-3 p-1 -m-1 rounded-[4px] hover:bg-white/5 transition-colors focus-ring"
+        >
           <div className="w-8 h-8 rounded-[6px] bg-stamp-amber/15 border border-stamp-amber/40 flex items-center justify-center font-mono text-[11px] text-stamp-amber">
             {who?.[0] ?? "?"}
           </div>
@@ -68,7 +69,7 @@ export default function Sidebar({ roleLabel, items, basePath, who, whoSub }) {
             <b className="block text-[13px]">{who}</b>
             <span className="font-mono text-[10px] text-paper/40">{whoSub}</span>
           </div>
-        </div>
+        </NavLink>
         <button
           onClick={() => {
             // TODO(backend): also invalidate/clear the JWT here once real auth exists

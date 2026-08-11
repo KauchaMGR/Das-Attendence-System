@@ -1,15 +1,13 @@
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 
 /**
  * Topbar — page header used at the top of every dashboard page.
  *
- * Has a notification bell on the right side, linking into the role's
- * /notifications route. There used to also be a profile avatar button
- * here — removed per request, since "My Profile" pages no longer exist
- * for any role. The `who` prop is kept (some pages still pass it in) but
- * is currently unused inside this component; harmless to leave, or strip
- * the `who={...}` prop from each page's <Topbar/> call if you want it
- * fully cleaned up.
+ * Has a profile-avatar button and a notification bell on the right side,
+ * linking into the role's /profile and /notifications routes respectively.
+ * The profile button was previously removed (no profile pages existed);
+ * it's back now that every role has a real /profile page again.
  *
  * Props:
  *   title        — main heading text
@@ -17,10 +15,12 @@ import { Link } from "react-router-dom";
  *   right        — optional extra element rendered before the bell
  *                  (e.g. a <StatusStamp> showing overall status)
  *   basePath     — role's root path, e.g. "/student" — used to build the
- *                  notification link
+ *                  profile/notification links
  *   unreadCount  — optional number shown as a badge on the bell icon
  */
 export default function Topbar({ title, sub, right, basePath, unreadCount = 0 }) {
+  const { user } = useAuth();
+
   return (
     <div className="flex justify-between items-start flex-wrap gap-3 mb-6 pb-5 border-b border-rule">
       <div>
@@ -34,6 +34,17 @@ export default function Topbar({ title, sub, right, basePath, unreadCount = 0 })
 
       <div className="flex items-center gap-3">
         {right}
+
+        {basePath && (
+          <Link
+            to={`${basePath}/profile`}
+            className="w-9 h-9 rounded-[4px] border border-rule bg-[#FBF9F3] flex items-center justify-center hover:border-ink/40 transition-colors focus-ring font-mono text-[12px] text-ink2"
+            aria-label="Profile"
+            title={user?.name}
+          >
+            {user?.name?.[0] ?? "?"}
+          </Link>
+        )}
 
         {/* Notification bell — links to {basePath}/notifications.
             TODO(backend): `unreadCount` should come from an API call, e.g.

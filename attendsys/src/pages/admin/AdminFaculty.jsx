@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Topbar from "../../components/Topbar.jsx";
 import Card from "../../components/Card.jsx";
 import { api } from "../../services/api.js";
@@ -7,19 +7,67 @@ import { useAuth } from "../../context/AuthContext.jsx";
 /**
  * AdminFaculty — "/admin/faculty"
  *
- * Lists faculty-maintainer accounts from the backend collection and shows
- * their assigned subject codes in the same format as the subject handoff
- * in the login token payload.
+ * Lists faculty accounts, now with edit (fullname/email/their one subject)
+ * and delete alongside the existing read-only list + search/filter.
+ * Assigning a subject here calls the same api.assignSubjectToFaculty()
+ * helper the Subjects page uses, so both pages stay in sync (one faculty,
+ * one subject — DOCUMENTATION.md §8).
  */
 export default function AdminFaculty() {
   const { user } = useAuth();
   const [faculty, setFaculty] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [query, setQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function loadAll() {
+    const [facs, subs] = await Promise.all([api.getFaculty(), api.getSubjects()]);
+    setFaculty(facs);
+    setSubjects(subs);
+  }
 
   useEffect(() => {
-    api.getFaculty().then(setFaculty);
+    loadAll();
   }, []);
+
+  function startEdit(f) {
+    setError("");
+    setEditingId(f.faculty_id);
+    setEditForm({
+      fullname: f.fullname,
+      email: f.email,
+      subject_code: f.subjects_assigned?.[0] || "",
+    });
+  }
+
+  async function saveEdit(f) {
+    setSaving(true);
+    setError("");
+    try {
+      await api.updateFaculty(f.faculty_id, { fullname: editForm.fullname, email: editForm.email });
+      if (editForm.subject_code) await api.assignSubjectToFaculty(f.faculty_id, editForm.subject_code);
+      setEditingId(null);
+      await loadAll();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(f) {
+    if (!confirm(`Delete faculty ${f.fullname} (${f.faculty_id})? This cannot be undone.`)) return;
+    try {
+      await api.deleteFaculty(f.faculty_id);
+      await loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   const subjectOptions = Array.from(
     new Set(
@@ -47,6 +95,8 @@ export default function AdminFaculty() {
         who={user?.name}
       />
 
+      {error && <div className="text-[13px] text-stamp-red mb-3">{error}</div>}
+
       <Card>
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           <input
@@ -73,25 +123,70 @@ export default function AdminFaculty() {
               <th className="py-2">Faculty ID</th>
               <th className="py-2">Name</th>
               <th className="py-2">Email</th>
-              <th className="py-2 text-right">Subjects</th>
+              <th className="py-2">Subjects</th>
+              <th className="py-2 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((f) => (
-              <tr key={f.faculty_id || f._id} className="border-b border-rule/70 last:border-0 align-top">
-                <td className="py-2.5 font-mono text-[11.5px] text-muted">{f.faculty_id}</td>
-                <td className="py-2.5">{f.fullname || f.name || "—"}</td>
-                <td className="py-2.5 text-muted">{f.email || "—"}</td>
-                <td className="py-2.5 text-right">
-                  {(f.subjects_assigned || []).length > 0 ? (
-                    <span className="font-mono text-[11px] text-muted">
-                      {(f.subjects_assigned || []).join(", ")}
-                    </span>
-                  ) : (
-                    <span className="text-muted">—</span>
-                  )}
-                </td>
-              </tr>
+              <Fragment key={f.faculty_id || f._id}>
+                <tr className="border-b border-rule/70 last:border-0 align-top">
+                  <td className="py-2.5 font-mono text-[11.5px] text-muted">{f.faculty_id}</td>
+                  <td className="py-2.5">{f.fullname || f.name || "—"}</td>
+                  <td className="py-2.5 text-muted">{f.email || "—"}</td>
+                  <td className="py-2.5">
+                    {(f.subjects_assigned || []).length > 0 ? (
+                      <span className="font-mono text-[11px] text-muted">
+                        {(f.subjects_assigned || []).join(", ")}
+                      </span>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                  </td>
+                  <td className="py-2.5 text-right space-x-3">
+                    {editingId === f.faculty_id ? (
+                      <button onClick={() => setEditingId(null)} className="font-mono text-[11px] text-muted hover:text-ink focus-ring">Cancel</button>
+                    ) : (
+                      <>
+                        <button onClick={() => startEdit(f)} className="font-mono text-[11px] text-stamp-green hover:underline focus-ring">Edit</button>
+                        <button onClick={() => handleDelete(f)} className="font-mono text-[11px] text-stamp-red hover:underline focus-ring">Delete</button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+                {editingId === f.faculty_id && (
+                  <tr className="border-b border-rule/70 last:border-0 bg-paper2/40">
+                    <td colSpan={5} className="py-3">
+                      <div className="grid md:grid-cols-4 gap-3 items-end">
+                        <div>
+                          <label className="block text-[11px] text-muted mb-1">Full name</label>
+                          <input value={editForm.fullname} onChange={(e) => setEditForm((p) => ({ ...p, fullname: e.target.value }))} className="w-full border border-rule rounded-[3px] px-2.5 py-1.5 text-[13px] focus-ring bg-white" />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-muted mb-1">Email</label>
+                          <input value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} className="w-full border border-rule rounded-[3px] px-2.5 py-1.5 text-[13px] focus-ring bg-white" />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-muted mb-1">Subject</label>
+                          <select value={editForm.subject_code} onChange={(e) => setEditForm((p) => ({ ...p, subject_code: e.target.value }))} className="w-full border border-rule rounded-[3px] px-2.5 py-1.5 text-[13px] focus-ring bg-white">
+                            <option value="">Unassigned</option>
+                            {subjects.map((s) => (
+                              <option key={s.subject_code} value={s.subject_code}>{s.subject_name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <button
+                          onClick={() => saveEdit(f)}
+                          disabled={saving}
+                          className="bg-stamp-green text-paper font-semibold text-[12.5px] px-4 py-2 rounded-[3px] disabled:opacity-50 focus-ring"
+                        >
+                          {saving ? "Saving…" : "Save"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>

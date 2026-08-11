@@ -9,6 +9,8 @@ from app.routes.faculty import router as faculty_router
 from app.routes.subjects import router as subject_router
 from app.routes.face import router as face_router
 from app.routes.attendance import router as attendance_router
+from app.routes.settings import router as settings_router
+from app.routes.users import router as user_router
 
 from app.services.recognition_service import load_models
 from app.services.seed_service import seed_defaults
@@ -49,6 +51,8 @@ app.include_router(faculty_router)
 app.include_router(subject_router)
 app.include_router(face_router)
 app.include_router(attendance_router)
+app.include_router(settings_router)
+app.include_router(user_router)
 
 
 @app.get("/")

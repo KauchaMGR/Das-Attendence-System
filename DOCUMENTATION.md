@@ -420,5 +420,74 @@ Two small, unrelated-on-purpose additions:
 
 - **`Backend/app/services/seed_service.py`** — `seed_defaults()` runs automatically in `main.py`'s `lifespan()`, right after the ML models load. It creates one default admin (`admin@example.com` / `Admin@123`) and two default faculty (`FAC001`/`FAC002`, matching the "Prof. R. Karki" / "Prof. S. Gurung" names already used in the frontend's mock data) — but only the ones that don't already exist (`seed_admin()` checks for *any* `role: "admin"` user first; `seed_faculty()` catches the `ValueError` `create_faculty()` already raises on a `faculty_id`/email collision and just skips it). Safe to restart the server as many times as you want — it only ever adds what's missing, never touches existing accounts.
 - **`Backend/purge_database.py`** — a **manual-only** script that deletes every document from every collection. There's no SQL database in this project (MongoDB via pymongo, not SQL) — this is the Mongo-equivalent of "a SQL script to wipe the database." It asks for a typed `yes` before doing anything (`--yes` skips the prompt), and is deliberately **not** wired into app startup — a database-wipe running automatically on every restart would be a disaster, not a convenience. Run it, then just restart the server to get a freshly-seeded admin + faculty again.
+- **`Backend/seed_demo_data.py`** — a **manual-only** script (same "no SQL database, this is the Mongo-equivalent" reasoning as above) that inserts a full demo dataset — 3 subjects, 3 faculty, 14 students, and ~3 school-weeks (Mon–Fri only) of `capture_sessions`/`attendance_records` — so every dashboard's "last N days" widgets have real, non-trivial data instead of being empty on a fresh database. Every document it inserts is tagged `"demo": True`; `python seed_demo_data.py --delete` removes only those tagged documents (same typed-`yes`/`--yes` confirmation pattern as `purge_database.py`), leaving any real data untouched. Re-running it without `--delete` is safe — it skips any student/faculty/subject/session that already exists by ID.
 
-Verified: `seed_defaults()` was confirmed idempotent (running it twice in a row produced the same 1 admin / 2 faculty, no duplicates) and, since a `--reload` dev server was already running against the real project database while this was built, its startup hook fired for real and created the seed data live rather than only in theory. `purge_database.py`'s deletion logic was verified against a disposable throwaway database (created, seeded, purged, then dropped entirely) rather than against the real project data, to avoid wiping anything by accident.
+Verified: `seed_defaults()` was confirmed idempotent (running it twice in a row produced the same 1 admin / 2 faculty, no duplicates) and, since a `--reload` dev server was already running against the real project database while this was built, its startup hook fired for real and created the seed data live rather than only in theory. `purge_database.py`'s deletion logic was verified against a disposable throwaway database (created, seeded, purged, then dropped entirely) rather than against the real project data, to avoid wiping anything by accident. `seed_demo_data.py` passes `python -m py_compile`; it was **not** run against a live database in this environment (see §8.10 — the ML dependencies needed to boot the app aren't installed here), so run it once yourself and spot-check a dashboard before relying on it.
+
+---
+
+## 8. Real data everywhere, CRUD, profile pages, configurable history window
+
+This pass replaced every remaining `mock(...)` call in the frontend (except the three notification lists, which still have no backend) with real data, fixed two display bugs (UTC timestamps shown as if local, a 14-day widget that miscounted weekends as absences), added the missing Update/Delete UI for students/faculty/subjects (the backend CRUD for all three already existed — §1.3 — only the frontend never called PUT/DELETE), added a `/profile` page for every role, and made "how many days of history to show" a real admin setting instead of a hardcoded `14` scattered across the frontend.
+
+### 8.1 Ground rule: "last N days"
+
+Used identically everywhere in this pass (Student overview heatmap, Faculty alerts/records/reports, Admin overview/reports):
+
+> **"Last N days" = the most recent N *calendar* days ending today**, where N is the admin-configured `history_days` setting (default 14, see §8.5). **Saturday and Sunday inside that window never count as absent and never count in a percentage's denominator** — no classes are held on them, so counting them as absences would understate real attendance.
+
+Two different renderings of the same rule, deliberately:
+- **Heatmap (Student overview)** — stays a continuous N-cell grid; weekend cells render as a distinct "holiday" color instead of being silently excluded from the grid, so the grid still reads as "the last N calendar days" at a glance.
+- **Bar charts (Faculty/Admin trend + records)** — weekend days are dropped from the chart entirely; there's no fixed grid to preserve, and a bar for a day nothing could have happened on is just noise.
+
+### 8.2 New backend: `attendance_service.py` reporting functions
+
+Four new functions, all plain pymongo loops/counts (no aggregation pipeline — same style already used everywhere else in this codebase, per §4.3 point 12): `get_subject_roster(subject_code, days=None)`, `get_low_attendance(subject_code, days, threshold_pct=None)`, `get_session_records(subject_code, days)`, `get_daily_trend(subject_code, days)`, and `get_admin_overview(days)` (which composes the first two across every subject for the campus-wide view). Backing routes, all on the existing `attendance` router:
+
+| Route | Used by |
+|---|---|
+| `GET /attendance/subject/{code}/alerts?days=&threshold=` | Faculty "Low-attendance alerts" |
+| `GET /attendance/subject/{code}/records?days=` | Faculty "Attendance records" |
+| `GET /attendance/subject/{code}/students?days=` | Faculty "My Students" (no `days` → all-time) and "Reports" (windowed) — same call backs both the on-screen table and the CSV export, so they can't drift apart |
+| `GET /attendance/report/overview?days=` | Admin "Overview" and "Reports" — same call backs both pages |
+
+**Known data-model limitation, called out explicitly (not silently assumed):** there's still no student↔subject enrollment collection (§6.4 already flagged this for the student summary; it applies here too). "Which students are in this subject" is approximated as *students whose `semester` matches the subject's `semester`* — the only link the current data model has. Good enough for the seeded single-section data this project ships with; a real fix needs an actual enrollment collection, not built here.
+
+`days` on every route above defaults to the admin's `history_days` setting when omitted (`_resolve_days()` in `routes/attendance.py`), so the frontend doesn't have to know the current setting value just to call these — though in practice it does know (see §8.6) and passes it explicitly.
+
+### 8.3 New backend: settings + users
+
+- **`system_settings` collection** (`models/settings.py`, `services/settings_service.py`, `routes/settings.py`) — a singleton document, `GET`/`PUT /settings/`. Fields: `cosine_threshold`, `min_attendance_pct`, `session_timeout_minutes`, `email_alerts_enabled` (all previously mocked, now real), plus the new `history_days` (default 14).
+- **`GET /users/?role=`** (`services/user_service.py`, `routes/users.py`) — reads the `users` collection directly, the real source of truth for "every account that can log in." Backs the admin Users page's combined list, joined client-side against `GET /students/`/`GET /faculty/` via each profile's `user_id` to know which entity endpoint to call for edit/delete.
+- **`auth_service.login_user()`** now also returns `email` — needed by the new profile pages, previously only `fullname` + role + ids came back.
+
+### 8.4 The UTC-timestamp display bug
+
+Root cause: FastAPI serializes `datetime.utcnow()` values to JSON *without* a `Z`/offset suffix (e.g. `"2026-08-11T10:02:14.123000"`). Every stored timestamp really is UTC, but a bare ISO string with no timezone designator is parsed by `new Date(...)` as **local** time — so a UTC clock reading silently got mislabeled as if it were already the viewer's local time, which is why "last recognized scan" and history timestamps showed the raw UTC value instead of shifting to local. Fixed with one helper, `parseServerDate()` in `services/api.js`, used everywhere a backend timestamp is turned into a `Date` (student last-scan/history, faculty session dates). No backend change needed — the fix is entirely in how the frontend parses what was already correct data.
+
+### 8.5 Scope decision: admin-account CRUD
+
+Admin pages (`AdminUsers`, `AdminSubjects`, `AdminFaculty`) now have full CRUD for **students** and **faculty** — both already had working `PUT`/`DELETE` routes server-side (§1.3); only the frontend never called them. **Rows with `role: "admin"` on the Users page stay read-only** — there's no backend endpoint to update/delete a bare `users` document, and adding one risks an admin accidentally locking themselves out with no recovery path. Deliberately out of scope.
+
+One consistency detail worth remembering: the one-faculty-one-subject relationship (§6.2's note that a subject's `faculty` is a single value by design) is stored on **both** sides — `faculty.subjects_assigned` and `subject.faculty_id` — and nothing in the database enforces they agree. `api.assignSubjectToFaculty(facultyId, subjectCode)` in `services/api.js` updates both in one call and is the only path the admin UI uses to (re)assign a subject, from either the Subjects page or the Faculty page, so they can't drift out of sync through the UI. (They could still drift if someone edits MongoDB directly — not guarded against, same as everything else in this project.)
+
+### 8.6 Configurable history window
+
+`AuthContext` now fetches `GET /settings/` once on mount (independent of login) and exposes it as `settings` via `useAuth()`, with `historyDays` defaulting to 14 until the fetch resolves. Every "last N days" widget across all three dashboards reads `settings.historyDays` instead of a hardcoded `14`. `AdminSettings`'s new "History window" field (`PUT /settings/`) calls `refreshSettings()` after saving, so other already-open pages pick up the new value the next time they re-render (no full page reload required, no polling either — it's a plain context update).
+
+### 8.7 Profile pages are back
+
+`Topbar`'s profile-avatar button and `Sidebar`'s who-am-I block were previously removed (an earlier pass's note: "no profile page exists anymore"). Both are restored, linking to a new `/profile` route per role (`StudentProfile.jsx` / `FacultyProfile.jsx` / `AdminProfile.jsx`, sharing one presentational `components/ProfileView.jsx`). Student profile pulls `section`/`semester`/`address` from `GET /students/{id}`; faculty profile resolves their one subject's name via the already-existing `getFacultySubjects()`; admin profile is just the login response's `name`/`email`/`role` — there's no separate "admin profile" entity.
+
+### 8.8 Frontend bug fix: "My Students" showed section instead of subject
+
+`FacultyStudents.jsx`'s data source (`api.getFacultyStudents()`) used to map `subject: student.section` — a copy/paste artifact, so the "Subject" column showed a student's section (e.g. "A") instead of the subject name. Now sourced from `GET /attendance/subject/{code}/students`, which returns the real subject name once, plus everything else a faculty member is likely to need (email, section, semester, held/attended counts) and a minimum-% filter alongside the existing search box.
+
+### 8.9 `mockData.js` is down to notifications only
+
+Every export except `mockStudentNotifications`/`mockFacultyNotifications`/`mockAdminNotifications` has been deleted — there's no notifications backend yet (out of scope for this pass), so those three remain mocked. Everything else the file used to hold (student profile/subjects/heatmap/history, faculty session/roster/alerts/records/students, admin stats/subjects/report/settings/users) is now real, per the file's own long-standing removal note ("delete this file once nothing in api.js imports from it").
+
+### 8.10 Verified
+
+- `Backend`: every new/changed Python file passes `python -m py_compile`; new route paths were checked by hand against Starlette's path-matching rules for conflicts with the existing `/attendance/{session_id}` and `/attendance/student/{id}/summary` routes (none — differing segment counts). **Not** boot-tested against a live `uvicorn` instance in this pass — the heavy ML dependencies (`torch`, `insightface`, `ultralytics`, `opencv-python`) aren't installed in this environment and installing them just for a smoke test was out of proportion to the change. Recommended before deploying: `uvicorn app.main:app --reload` and exercise the new endpoints listed in §8.2–8.3 against real seeded data.
+- `Frontend`: `npm run build` in `attendsys/` completes cleanly (73 modules, no errors) across every edited page.

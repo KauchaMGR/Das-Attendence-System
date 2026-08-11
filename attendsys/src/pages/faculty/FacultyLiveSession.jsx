@@ -10,18 +10,19 @@ import { useAuth } from "../../context/AuthContext.jsx";
  * FacultyLiveSession — "/faculty" (index route).
  *
  * There's no "session" concept in the backend (see DOCUMENTATION.md §4/§5)
- * — instead, the faculty picks one of their own subjects, and the
- * session_id sent with each capture is derived as `${subjectCode}_${today}`.
- * Re-capturing the same subject on the same day keeps adding to that one
- * session instead of starting a fresh one, so students already matched
- * today don't get duplicate rows (see attendance_service.mark_attendance).
+ * — instead, the faculty's one assigned subject (business rule: one faculty,
+ * one subject — see DOCUMENTATION.md §8) drives a session_id derived as
+ * `${subjectCode}_${today}`. Re-capturing the same subject on the same day
+ * keeps adding to that one session instead of starting a fresh one, so
+ * students already matched today don't get duplicate rows (see
+ * attendance_service.mark_attendance).
  */
 export default function FacultyLiveSession() {
-  const { user } = useAuth();
+  const { user, settings } = useAuth();
   const [subjects, setSubjects] = useState([]);
   const [subjectCode, setSubjectCode] = useState("");
   const [roster, setRoster] = useState([]);
-  const [alerts, setAlerts] = useState([]);
+  const [alerts, setAlerts] = useState({ days: settings.historyDays, alerts: [] });
   const [capturing, setCapturing] = useState(false);
   const [captureError, setCaptureError] = useState("");
   const [lastResult, setLastResult] = useState(null); // { detected, matched } from the last capture
@@ -35,12 +36,15 @@ export default function FacultyLiveSession() {
       setSubjects(subs);
       if (subs.length > 0) setSubjectCode(subs[0].subject_code);
     });
-    api.getLowAttendanceAlerts().then(setAlerts);
   }, []);
 
   useEffect(() => {
     if (sessionId) api.getRoster(sessionId).then(setRoster);
   }, [sessionId]);
+
+  useEffect(() => {
+    if (subjectCode) api.getLowAttendanceAlerts(subjectCode, settings.historyDays).then(setAlerts);
+  }, [subjectCode, settings.historyDays]);
 
   function toggleStatus(id) {
     setRoster((prev) =>
@@ -84,18 +88,6 @@ export default function FacultyLiveSession() {
 
       <div className="grid md:grid-cols-[2fr_1fr] gap-5 mb-5">
         <Card title="Capture attendance" sub="Open the camera and take a photo of the classroom to run detection + recognition">
-          {subjects.length > 1 && (
-            <select
-              value={subjectCode}
-              onChange={(e) => setSubjectCode(e.target.value)}
-              className="w-full border border-rule rounded-[3px] px-3 py-2 text-[13px] bg-white focus-ring mb-3"
-            >
-              {subjects.map((s) => (
-                <option key={s.subject_code} value={s.subject_code}>{s.subject_name}</option>
-              ))}
-            </select>
-          )}
-
           {subjects.length === 0 ? (
             <div className="text-[13px] text-muted py-6 text-center">
               No subjects assigned to this account yet — ask an admin to assign one.
@@ -157,13 +149,17 @@ export default function FacultyLiveSession() {
           )}
         </Card>
 
-        <Card title="Low-attendance alerts" sub="Students below the 75% threshold">
-          {alerts.map((a) => (
-            <div key={a.student} className="flex gap-2.5 py-2.5 border-b border-rule/70 last:border-0 text-[13px]">
-              <span className="w-1.5 h-1.5 rounded-full bg-stamp-amber mt-1.5 shrink-0" />
-              <div><b>{a.student}</b> is {a.detail}.</div>
-            </div>
-          ))}
+        <Card title="Low-attendance alerts" sub={`Last ${alerts.days} days · below 75% · Sat/Sun excluded`}>
+          {alerts.alerts.length === 0 ? (
+            <div className="text-[13px] text-muted py-4">No students below threshold in this window.</div>
+          ) : (
+            alerts.alerts.map((a) => (
+              <div key={a.student} className="flex gap-2.5 py-2.5 border-b border-rule/70 last:border-0 text-[13px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-stamp-amber mt-1.5 shrink-0" />
+                <div><b>{a.student}</b> — {a.detail}.</div>
+              </div>
+            ))
+          )}
         </Card>
       </div>
     </>

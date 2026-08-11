@@ -12,6 +12,7 @@ import { useAuth } from "./context/AuthContext.jsx";
 import StudentOverview from "./pages/student/StudentOverview.jsx";
 import StudentHistory from "./pages/student/StudentHistory.jsx";
 import StudentNotifications from "./pages/student/StudentNotifications.jsx";
+import StudentProfile from "./pages/student/StudentProfile.jsx";
 
 // Faculty pages
 import FacultyLiveSession from "./pages/faculty/FacultyLiveSession.jsx";
@@ -19,6 +20,7 @@ import FacultyRecords from "./pages/faculty/FacultyRecords.jsx";
 import FacultyStudents from "./pages/faculty/FacultyStudents.jsx";
 import FacultyReports from "./pages/faculty/FacultyReports.jsx";
 import FacultyNotifications from "./pages/faculty/FacultyNotifications.jsx";
+import FacultyProfile from "./pages/faculty/FacultyProfile.jsx";
 
 // Admin pages
 import AdminOverview from "./pages/admin/AdminOverview.jsx";
@@ -29,6 +31,7 @@ import AdminSubjects from "./pages/admin/AdminSubjects.jsx";
 import AdminReports from "./pages/admin/AdminReports.jsx";
 import AdminSettings from "./pages/admin/AdminSettings.jsx";
 import AdminNotifications from "./pages/admin/AdminNotifications.jsx";
+import AdminProfile from "./pages/admin/AdminProfile.jsx";
 
 
 /**
@@ -40,10 +43,9 @@ import AdminNotifications from "./pages/admin/AdminNotifications.jsx";
  * once + an <Outlet/>), and each sidebar item is a real child route inside
  * it.
  *
- * NOTE: "My Profile" pages were removed for all three roles per request —
- * there is no /student/profile, /faculty/profile, or /admin/profile route
- * anymore. Topbar's profile-avatar button and Sidebar's profile link were
- * removed to match (see components/Topbar.jsx and components/Sidebar.jsx).
+ * Every role has a /profile route (StudentProfile / FacultyProfile /
+ * AdminProfile) — reachable from Topbar's avatar button and Sidebar's
+ * bottom who-am-I block (see components/Topbar.jsx and components/Sidebar.jsx).
  *
  * ROUTE MAP:
  *   /login                  -> RoleSelect (choose Student/Faculty/Admin)
@@ -54,12 +56,14 @@ import AdminNotifications from "./pages/admin/AdminNotifications.jsx";
  *   /student              -> StudentOverview   (index)
  *   /student/history      -> StudentHistory
  *   /student/notifications -> StudentNotifications
+ *   /student/profile      -> StudentProfile
  *
  *   /faculty               -> FacultyLiveSession (index)
  *   /faculty/records       -> FacultyRecords
  *   /faculty/students      -> FacultyStudents
  *   /faculty/reports       -> FacultyReports
  *   /faculty/notifications -> FacultyNotifications
+ *   /faculty/profile       -> FacultyProfile
  *
  *   /admin                 -> AdminOverview (index)
  *   /admin/enrollment      -> AdminEnrollment
@@ -69,6 +73,7 @@ import AdminNotifications from "./pages/admin/AdminNotifications.jsx";
  *   /admin/reports         -> AdminReports
  *   /admin/settings        -> AdminSettings
  *   /admin/notifications   -> AdminNotifications
+ *   /admin/profile         -> AdminProfile
  * ============================================================================
  */
 export default function App() {
@@ -104,6 +109,7 @@ export default function App() {
         <Route index element={<StudentOverview />} />
         <Route path="history" element={<StudentHistory />} />
         <Route path="notifications" element={<StudentNotifications />} />
+        <Route path="profile" element={<StudentProfile />} />
       </Route>
 
       {/* ---------------- FACULTY ---------------- */}
@@ -131,6 +137,7 @@ export default function App() {
         <Route path="students" element={<FacultyStudents />} />
         <Route path="reports" element={<FacultyReports />} />
         <Route path="notifications" element={<FacultyNotifications />} />
+        <Route path="profile" element={<FacultyProfile />} />
       </Route>
 
       {/* ---------------- ADMIN ---------------- */}
@@ -164,6 +171,7 @@ export default function App() {
         <Route path="reports" element={<AdminReports />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="notifications" element={<AdminNotifications />} />
+        <Route path="profile" element={<AdminProfile />} />
       </Route>
     </Routes>
   );

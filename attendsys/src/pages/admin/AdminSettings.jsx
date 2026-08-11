@@ -7,19 +7,20 @@ import { useAuth } from "../../context/AuthContext.jsx";
 /**
  * AdminSettings — "/admin/settings"
  *
- * System-wide configuration: the cosine similarity threshold (proposal
- * section 5.3, Threshold Sensitivity Analysis), minimum attendance %,
- * session timeout, and email alerts toggle.
+ * System-wide configuration, now persisted for real in MongoDB (a
+ * `system_settings` singleton document) instead of mocked. Includes the new
+ * "History window" field (`historyDays`) that drives every "last N days"
+ * widget across all three dashboards (Student heatmap, Faculty alerts/
+ * records/reports, Admin overview/reports) — see DOCUMENTATION.md §8.
  *
- * Maps to:
- *   GET   /api/admin/settings   -> api.getAdminSettings()
- *   PATCH /api/admin/settings   -> api.updateAdminSettings(fields)
+ * Maps to: GET/PUT /settings/ -> api.getSystemSettings()/updateSystemSettings()
  */
 export default function AdminSettings() {
-  const { user } = useAuth();
+  const { user, refreshSettings } = useAuth();
   const [settings, setSettings] = useState(null);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     api.getAdminSettings().then(setSettings);
@@ -31,12 +32,17 @@ export default function AdminSettings() {
 
   async function handleSave() {
     setSaving(true);
-    // TODO(backend): this should PATCH only the changed fields ideally,
-    // but sending the whole object is fine for a settings form this small.
-    const updated = await api.updateAdminSettings(settings);
-    setSettings(updated);
-    setSaving(false);
-    setSavedAt(new Date().toLocaleTimeString());
+    setError("");
+    try {
+      const updated = await api.updateAdminSettings(settings);
+      setSettings(updated);
+      await refreshSettings(); // so every other page's "last N days" widgets pick up the new value on next navigation
+      setSavedAt(new Date().toLocaleTimeString());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!settings) {
@@ -52,7 +58,24 @@ export default function AdminSettings() {
     <>
       <Topbar title="Settings" sub="System-wide configuration" basePath="/admin" who={user?.name} unreadCount={2} />
 
-      <Card title="Recognition" sub="Controls the face-matching pipeline (proposal §5.3)">
+      {error && <div className="text-[13px] text-stamp-red mb-3">{error}</div>}
+
+      <Card title="History window" sub="How many days of history every dashboard's 'last N days' widgets show">
+        <label className="block text-[12px] text-muted mb-1">Days (Student heatmap, Faculty alerts/records/reports, Admin overview/reports)</label>
+        <input
+          type="number"
+          min="7"
+          max="60"
+          value={settings.historyDays}
+          onChange={(e) => updateField("historyDays", Number(e.target.value))}
+          className="w-full border border-rule rounded-[3px] px-3 py-2 text-[13px] bg-white focus-ring"
+        />
+        <p className="text-[12px] text-muted mt-1.5">
+          Saturdays and Sundays inside this window are never counted as absences. Default: 14.
+        </p>
+      </Card>
+
+      <Card title="Recognition" sub="Controls the face-matching pipeline (proposal §5.3)" className="mt-5">
         <div className="mb-5">
           <div className="flex justify-between text-[13px] mb-2">
             <label>Cosine similarity threshold</label>

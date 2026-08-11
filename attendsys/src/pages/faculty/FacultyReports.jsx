@@ -7,48 +7,50 @@ import { useAuth } from "../../context/AuthContext.jsx";
 /**
  * FacultyReports — "/faculty/reports"
  *
- * Summary view: subject-wise averages (derived client-side from
- * getFacultyStudents() for now) + a CSV export stub.
- *
- * TODO(backend): once a real `/api/faculty/reports` endpoint exists that
- * returns pre-aggregated averages, swap the derivation below for a direct
- * api call instead of computing it from the raw student list here.
+ * One subject only (business rule — DOCUMENTATION.md §8): the on-screen
+ * roster and the CSV export both come from the exact same windowed call
+ * (api.getFacultyStudents(subjectCode, days)), so the export always matches
+ * what's on screen — no separate client-side aggregation to drift out of
+ * sync with it.
  */
 export default function FacultyReports() {
-  const { user } = useAuth();
-  const [students, setStudents] = useState([]);
+  const { user, settings } = useAuth();
+  const [subjects, setSubjects] = useState([]);
+  const [subjectCode, setSubjectCode] = useState("");
+  const [roster, setRoster] = useState([]);
 
   useEffect(() => {
-    api.getFacultyStudents().then(setStudents);
+    api.getFacultySubjects(user?.subjectsAssigned || []).then((subs) => {
+      setSubjects(subs);
+      if (subs.length > 0) setSubjectCode(subs[0].subject_code);
+    });
   }, []);
 
-  // Group by subject and average the pct — simple client-side aggregation.
-  const bySubject = {};
-  students.forEach((s) => {
-    if (!bySubject[s.subject]) bySubject[s.subject] = [];
-    bySubject[s.subject].push(s.pct);
-  });
-  const subjectAverages = Object.entries(bySubject).map(([subject, pcts]) => ({
-    subject,
-    avg: (pcts.reduce((a, b) => a + b, 0) / pcts.length).toFixed(1),
-    count: pcts.length,
-  }));
+  useEffect(() => {
+    if (!subjectCode) return;
+    api.getFacultyStudents(subjectCode, settings.historyDays).then(setRoster);
+  }, [subjectCode, settings.historyDays]);
 
-  const belowThreshold = students.filter((s) => s.pct < 75);
+  const currentSubject = subjects.find((s) => s.subject_code === subjectCode);
+  const belowThreshold = roster.filter((s) => s.pct < 75);
+  const classAverage = roster.length
+    ? (roster.reduce((sum, s) => sum + s.pct, 0) / roster.length).toFixed(1)
+    : "0.0";
 
-  /**
-   * TODO(backend): generate a real CSV/PDF server-side (or client-side with
-   * a library) — this is a placeholder that just downloads what's already
-   * on screen as CSV text, to demonstrate the button working end-to-end.
-   */
   function exportCsv() {
-    const rows = [["Subject", "Average %", "Student count"], ...subjectAverages.map((s) => [s.subject, s.avg, s.count])];
+    const rows = [
+      [`Subject: ${currentSubject?.subject_name || subjectCode}`],
+      [`Window: last ${settings.historyDays} days, Sat/Sun excluded`],
+      [],
+      ["Roll", "Name", "Held", "Attended", "Attendance %"],
+      ...roster.map((s) => [s.roll, s.name, s.held, s.attended, s.pct]),
+    ];
     const csv = rows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "attendance-report.csv";
+    a.download = `attendance-report-${subjectCode}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -57,14 +59,15 @@ export default function FacultyReports() {
     <>
       <Topbar
         title="Reports"
-        sub="Subject-wise summary"
+        sub={`${currentSubject ? currentSubject.subject_name : "No subject assigned"} · last ${settings.historyDays} days · Sat/Sun excluded`}
         basePath="/faculty"
         who={user?.name}
         unreadCount={1}
         right={
           <button
             onClick={exportCsv}
-            className="font-mono text-[11.5px] border border-rule rounded-[3px] px-3.5 py-2 hover:border-ink/40 transition-colors focus-ring"
+            disabled={roster.length === 0}
+            className="font-mono text-[11.5px] border border-rule rounded-[3px] px-3.5 py-2 hover:border-ink/40 transition-colors focus-ring disabled:opacity-50"
           >
             Export CSV
           </button>
@@ -72,23 +75,17 @@ export default function FacultyReports() {
       />
 
       <div className="grid md:grid-cols-2 gap-5">
-        <Card title="Subject averages" sub="Mean attendance % across your roster">
+        <Card title="Class summary" sub="This window">
           <table className="w-full text-[13px]">
-            <thead>
-              <tr className="text-left font-mono text-[10.5px] text-muted uppercase tracking-wide border-b border-rule">
-                <th className="py-2">Subject</th>
-                <th className="py-2">Students</th>
-                <th className="py-2 text-right">Average</th>
-              </tr>
-            </thead>
             <tbody>
-              {subjectAverages.map((s) => (
-                <tr key={s.subject} className="border-b border-rule/70 last:border-0">
-                  <td className="py-2.5">{s.subject}</td>
-                  <td className="py-2.5 text-muted">{s.count}</td>
-                  <td className="py-2.5 text-right font-mono">{s.avg}%</td>
-                </tr>
-              ))}
+              <tr className="border-b border-rule/70">
+                <td className="py-2.5 font-mono text-muted">Students</td>
+                <td className="py-2.5 text-right">{roster.length}</td>
+              </tr>
+              <tr>
+                <td className="py-2.5 font-mono text-muted">Class average</td>
+                <td className="py-2.5 text-right font-mono">{classAverage}%</td>
+              </tr>
             </tbody>
           </table>
         </Card>
@@ -98,8 +95,8 @@ export default function FacultyReports() {
             <div className="text-[13px] text-muted py-4">No students currently below threshold.</div>
           ) : (
             belowThreshold.map((s) => (
-              <div key={`${s.id}-${s.subject}`} className="flex justify-between py-2.5 border-b border-rule/70 last:border-0 text-[13px]">
-                <span>{s.name} <span className="text-muted">· {s.subject}</span></span>
+              <div key={s.id} className="flex justify-between py-2.5 border-b border-rule/70 last:border-0 text-[13px]">
+                <span>{s.name} <span className="text-muted">· {s.roll}</span></span>
                 <span className="font-mono text-stamp-red">{s.pct}%</span>
               </div>
             ))

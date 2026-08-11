@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Topbar from "../../components/Topbar.jsx";
 import Card from "../../components/Card.jsx";
 import { api } from "../../services/api.js";
@@ -7,23 +7,26 @@ import { useAuth } from "../../context/AuthContext.jsx";
 /**
  * AdminUsers — "/admin/users"
  *
- * Lists every account (students, faculty, admins) with search + role
- * filter. Maps to: GET /api/admin/users -> api.getUsers()
+ * Every login account (students, faculty, admins), real data joined from
+ * three sources: GET /users/ (source of truth for every account) matched
+ * against GET /students/ and GET /faculty/ via each profile's `user_id`, so
+ * a student/faculty row can be edited or deleted through the right entity
+ * endpoint (PUT/DELETE /students/{id} or /faculty/{id}).
  *
- * REMOVED PER REQUEST:
- *   - Email column — accounts are no longer shown with an email address
- *     here (see mockData.js's header comment for the full list of where
- *     "email" was removed).
- *   - Status column + Suspend/Reactivate action — there is no longer an
- *     active/suspended concept on user accounts. If you need to disable
- *     an account in the future, that's a feature to re-add deliberately
- *     rather than something this page still half-supports.
+ * SCOPE DECISION (see DOCUMENTATION.md §8): admin-role rows are read-only —
+ * there's no backend endpoint to update/delete a bare `users` document, and
+ * adding one risks accidental admin self-lockout with no recovery path.
  */
 export default function AdminUsers() {
   const { user } = useAuth();
-  const [users, setUsers] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   // "Add faculty" form — real: POST /faculty/ (creates a login account +
   // faculty profile together, same default-password pattern as students).
@@ -33,8 +36,31 @@ export default function AdminUsers() {
   const [facultyError, setFacultyError] = useState("");
   const [lastCreatedFaculty, setLastCreatedFaculty] = useState(null);
 
+  async function loadAll() {
+    const [users, students, faculty, subs] = await Promise.all([
+      api.getUsers(),
+      api.getStudents(),
+      api.getFaculty(),
+      api.getSubjects(),
+    ]);
+
+    const studentByUserId = {};
+    for (const s of students) if (s.user_id) studentByUserId[s.user_id] = s;
+    const facultyByUserId = {};
+    for (const f of faculty) if (f.user_id) facultyByUserId[f.user_id] = f;
+
+    setRows(
+      users.map((u) => ({
+        ...u,
+        student: studentByUserId[u.id] || null,
+        faculty: facultyByUserId[u.id] || null,
+      }))
+    );
+    setSubjects(subs);
+  }
+
   useEffect(() => {
-    api.getUsers().then(setUsers);
+    loadAll();
   }, []);
 
   function updateFacultyField(field, value) {
@@ -48,8 +74,9 @@ export default function AdminUsers() {
     try {
       const created = await api.createFaculty(facultyForm);
       setLastCreatedFaculty(created);
-      setFacultyForm({ facultyId: "", name: "", email: "" });
+      setFacultyForm({ facultyId: "", name: "", email: "", subjectCode: "" });
       setShowAddFaculty(false);
+      await loadAll();
     } catch (err) {
       setFacultyError(err.message);
     } finally {
@@ -57,8 +84,70 @@ export default function AdminUsers() {
     }
   }
 
-  const filtered = users.filter((u) => {
-    const matchesQuery = u.name.toLowerCase().includes(query.toLowerCase());
+  function startEdit(row) {
+    setError("");
+    setEditingId(row.id);
+    if (row.student) {
+      setEditForm({
+        fullname: row.student.fullname,
+        email: row.student.email,
+        section: row.student.section,
+        semester: row.student.semester,
+        address: row.student.address,
+      });
+    } else if (row.faculty) {
+      setEditForm({
+        fullname: row.faculty.fullname,
+        email: row.faculty.email,
+        subject_code: row.faculty.subjects_assigned?.[0] || "",
+      });
+    }
+  }
+
+  async function saveEdit(row) {
+    setSaving(true);
+    setError("");
+    try {
+      if (row.student) {
+        await api.updateStudent(row.student.student_id, {
+          fullname: editForm.fullname,
+          email: editForm.email,
+          section: editForm.section,
+          semester: Number(editForm.semester),
+          address: editForm.address,
+        });
+      } else if (row.faculty) {
+        await api.updateFaculty(row.faculty.faculty_id, {
+          fullname: editForm.fullname,
+          email: editForm.email,
+        });
+        if (editForm.subject_code) {
+          await api.assignSubjectToFaculty(row.faculty.faculty_id, editForm.subject_code);
+        }
+      }
+      setEditingId(null);
+      await loadAll();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(row) {
+    const label = row.student ? row.student.student_id : row.faculty.faculty_id;
+    if (!confirm(`Delete ${row.name} (${label})? This cannot be undone.`)) return;
+    try {
+      if (row.student) await api.deleteStudent(row.student.student_id);
+      else if (row.faculty) await api.deleteFaculty(row.faculty.faculty_id);
+      await loadAll();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const filtered = rows.filter((u) => {
+    const matchesQuery = u.name.toLowerCase().includes(query.toLowerCase()) || u.email.toLowerCase().includes(query.toLowerCase());
     const matchesRole = roleFilter === "all" || u.role === roleFilter;
     return matchesQuery && matchesRole;
   });
@@ -67,7 +156,7 @@ export default function AdminUsers() {
     <>
       <Topbar
         title="Users"
-        sub={`${users.length} accounts`}
+        sub={`${rows.length} accounts`}
         basePath="/admin"
         unreadCount={2}
         right={
@@ -129,11 +218,13 @@ export default function AdminUsers() {
       )}
 
       <Card>
+        {error && <div className="text-[13px] text-stamp-red mb-3">{error}</div>}
+
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name…"
+            placeholder="Search by name or email…"
             className="flex-1 min-w-[200px] border border-rule rounded-[3px] px-3 py-2 text-[13px] bg-white focus-ring"
           />
           <select
@@ -152,15 +243,84 @@ export default function AdminUsers() {
           <thead>
             <tr className="text-left font-mono text-[10.5px] text-muted uppercase tracking-wide border-b border-rule">
               <th className="py-2">Name</th>
-              <th className="py-2 text-right">Role</th>
+              <th className="py-2">Email</th>
+              <th className="py-2">Role</th>
+              <th className="py-2 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((u) => (
-              <tr key={u.id} className="border-b border-rule/70 last:border-0">
-                <td className="py-2.5">{u.name}</td>
-                <td className="py-2.5 text-right font-mono text-[11px] uppercase text-muted">{u.role}</td>
-              </tr>
+              <Fragment key={u.id}>
+                <tr className="border-b border-rule/70 last:border-0">
+                  <td className="py-2.5">{u.name}</td>
+                  <td className="py-2.5 text-muted text-[12px]">{u.email}</td>
+                  <td className="py-2.5 font-mono text-[11px] uppercase text-muted">{u.role}</td>
+                  <td className="py-2.5 text-right">
+                    {u.student || u.faculty ? (
+                      editingId === u.id ? (
+                        <button onClick={() => setEditingId(null)} className="font-mono text-[11px] text-muted hover:text-ink focus-ring">Cancel</button>
+                      ) : (
+                        <span className="space-x-3">
+                          <button onClick={() => startEdit(u)} className="font-mono text-[11px] text-stamp-green hover:underline focus-ring">Edit</button>
+                          <button onClick={() => handleDelete(u)} className="font-mono text-[11px] text-stamp-red hover:underline focus-ring">Delete</button>
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-muted font-mono text-[11px]">—</span>
+                    )}
+                  </td>
+                </tr>
+                {editingId === u.id && (
+                  <tr key={`${u.id}-edit`} className="border-b border-rule/70 last:border-0 bg-paper2/40">
+                    <td colSpan={4} className="py-3">
+                      <div className="grid md:grid-cols-4 gap-3 items-end">
+                        <div>
+                          <label className="block text-[11px] text-muted mb-1">Full name</label>
+                          <input value={editForm.fullname} onChange={(e) => setEditForm((p) => ({ ...p, fullname: e.target.value }))} className="w-full border border-rule rounded-[3px] px-2.5 py-1.5 text-[13px] focus-ring bg-white" />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] text-muted mb-1">Email</label>
+                          <input value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} className="w-full border border-rule rounded-[3px] px-2.5 py-1.5 text-[13px] focus-ring bg-white" />
+                        </div>
+                        {u.student && (
+                          <>
+                            <div>
+                              <label className="block text-[11px] text-muted mb-1">Section</label>
+                              <input value={editForm.section} onChange={(e) => setEditForm((p) => ({ ...p, section: e.target.value }))} className="w-full border border-rule rounded-[3px] px-2.5 py-1.5 text-[13px] focus-ring bg-white" />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] text-muted mb-1">Semester</label>
+                              <input type="number" min="1" max="8" value={editForm.semester} onChange={(e) => setEditForm((p) => ({ ...p, semester: e.target.value }))} className="w-full border border-rule rounded-[3px] px-2.5 py-1.5 text-[13px] focus-ring bg-white" />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-[11px] text-muted mb-1">Address</label>
+                              <input value={editForm.address} onChange={(e) => setEditForm((p) => ({ ...p, address: e.target.value }))} className="w-full border border-rule rounded-[3px] px-2.5 py-1.5 text-[13px] focus-ring bg-white" />
+                            </div>
+                          </>
+                        )}
+                        {u.faculty && (
+                          <div>
+                            <label className="block text-[11px] text-muted mb-1">Subject</label>
+                            <select value={editForm.subject_code} onChange={(e) => setEditForm((p) => ({ ...p, subject_code: e.target.value }))} className="w-full border border-rule rounded-[3px] px-2.5 py-1.5 text-[13px] focus-ring bg-white">
+                              <option value="">Unassigned</option>
+                              {subjects.map((s) => (
+                                <option key={s.subject_code} value={s.subject_code}>{s.subject_name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => saveEdit(u)}
+                          disabled={saving}
+                          className="bg-stamp-green text-paper font-semibold text-[12.5px] px-4 py-2 rounded-[3px] disabled:opacity-50 focus-ring"
+                        >
+                          {saving ? "Saving…" : "Save"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>
