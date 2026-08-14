@@ -10,7 +10,7 @@ SFACE_PATH = os.path.join(_MODELS_DIR, "face_recognition_sface_2021dec.onnx")
 
 # OpenCV Zoo's recommended cosine-similarity threshold for SFace — scores at
 # or above this are considered the same person.
-COSINE_MATCH_THRESHOLD = 0.363
+COSINE_MATCH_THRESHOLD = 0.4
 
 _detector = None
 _recognizer = None

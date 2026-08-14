@@ -12,7 +12,7 @@ const STAGES = [
   {
     n: "02",
     t: "Detect",
-    d: "YOLOv8n-face locates every face in the frame at once, built for the group scenarios a classroom photo actually produces.",
+    d: "OpenCV YuNet locates every face in the frame at once, built for the group scenarios a classroom photo actually produces.",
   },
   {
     n: "03",
@@ -27,12 +27,12 @@ const STAGES = [
 ];
 
 const STACK = [
-  "FastAPI", "YOLOv8n-face", "DeepFace · SFace", "MongoDB", "JWT + bcrypt", "React + Tailwind",
+  "FastAPI", "OpenCV YuNet", "DeepFace · SFace", "MongoDB", "JWT + bcrypt", "React + Tailwind",
 ];
 
 const TEAM = [
   { i: "AS", n: "Aayushman Shrestha", r: "231501", role: "API routes, JWT auth, MongoDB queries" },
-  { i: "DK", n: "Dipeen Kaucha Magar", r: "231513", role: "YOLO detection, DeepFace recognition, enrollment pipeline" },
+  { i: "DK", n: "Dipeen Kaucha Magar", r: "231513", role: "OpenCV YuNet detection, DeepFace recognition, enrollment pipeline" },
   { i: "SP", n: "Sittal Pantha", r: "231534", role: "React dashboard, routing, documentation" },
 ];
 
@@ -73,7 +73,7 @@ export default function Landing() {
             The class register, marked by the room itself.
           </h1>
           <p className="text-[16px] leading-relaxed text-ink2/80 max-w-[46ch] mt-6">
-            One photograph at the start of class. YOLOv8n-face finds every
+            One photograph at the start of class. OpenCV YuNet finds every
             student in frame, DeepFace confirms who they are, and attendance
             lands in the register before roll call would have even started.
           </p>
